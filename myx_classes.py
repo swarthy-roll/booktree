@@ -17,6 +17,22 @@ import myx_mam
 #Module variables
 authMode="login"
 verbose=False
+top_level_categories={"Fiction", "Nonfiction", "Non-fiction"}
+popular_fiction_genres = ["Fiction","Fantasy","Science Fiction"
+                          ,"High Fantasy","Epic Fantasy","Dark Fantasy"
+                          ,"Horror","Romantasy","Steampunk"
+                          ,"Science Fiction Fantasy","Military Fiction","Fae"
+                          ,"Fairy Tales","Space Opera","Speculative Fiction"
+                          ,"Urban Fantasy","Novella","Vampires","Werewolves"
+                          ,"Shapeshifters","Dragons","Magic","Paranormal"
+                          ,"Adult Fiction","Alternate History","Chick Lit"
+                          ,"Crime Fiction","Dystopia","Dystopian"
+                          ,"Graphic Novels","Historical Fantasy"
+                          ,"Historical Fantasy","Magical Realism"
+                          ,"Paranormal Romance","Superheroes"
+                          ,"Time Travel","Young Adult Fantasy","Women's Fiction"]
+popular_nonfiction_genres = ["Nonfiction","Non-fiction","Autobiography"
+                             ,"Biography","Memoir","Biography Memoir"]
 
 #Author and Narrator Classes
 @dataclass
@@ -37,13 +53,21 @@ class Series:
         else:
             return self.name
 
+#Categories Class
+@dataclass
+class Categories:
+    name:str=""
+
 #Book Class
 @dataclass
 class Book:
     asin:str=""
+    isbn:str=""
     title:str=""
     subtitle:str=""
+    publication_year:str=""
     publicationName:str=""
+    publisher:str=""
     length:int=0
     duration:float=0
     matchRate=0
@@ -53,6 +77,8 @@ class Book:
     series:list[Series]= field(default_factory=list)
     authors:list[Contributor]= field(default_factory=list)
     narrators:list[Contributor]= field(default_factory=list)
+    genres:list[Categories]= field(default_factory=list)
+    tags:list[Categories]= field(default_factory=list)
     files:list[str]= field(default_factory=list)
 
     def addFiles(self, file):
@@ -100,6 +126,18 @@ class Book:
             return myx_utilities.getList(self.narrators, delimiter, encloser, stripaccents=True) 
         else:
             return ""
+        
+    def getGenres(self, delimiter=",", encloser="", stripaccents=True):
+        if len(self.genres):
+            return myx_utilities.getList(self.genres, delimiter, encloser, stripaccents=True) 
+        else:
+            return ""
+
+    def getTags(self, delimiter=",", encloser="", stripaccents=True):
+        if len(self.tags):
+            return myx_utilities.getList(self.tags, delimiter, encloser, stripaccents=True) 
+        else:
+            return ""
     
     def getSeriesParts(self, delimiter=",", encloser="", stripaccents=True):
         seriesparts = []
@@ -116,13 +154,31 @@ class Book:
                 self.authors.append(Contributor(author))
 
     def setNarrators(self, narrators):
-        #Given a csv of authors, convert it to a list
+        #Given a csv of narrators, convert it to a list
         if len(narrators.strip()):
             for narrator in narrators.split (","):
                 self.narrators.append(Contributor(narrator))
 
+    def setGenres(self, genres, limit=2):
+        #Given a csv of genres, convert it to a list. Default is two, fiction/nonfiction use one of the default spots
+        if len(genres.strip()):
+            if any(genre in genres for genre in popular_fiction_genres):
+                self.genres.append(Categories("Fiction"))
+            elif any(genre in genres for genre in popular_nonfiction_genres):
+                self.genres.append(Categories("Nonfiction"))
+            else: 
+                self.genres.append(Categories("Unknown"))
+
+            for genre in [genre for genre in genres.split(",") if genre not in top_level_categories][:limit-1]:
+                self.genres.append(Categories(genre))
+
+    def setTags(self, tags):
+        #Given a csv of tags, convert it to a list
+        for tag in [tag for tag in tags.split(",") if tag not in top_level_categories]:
+            self.tags.append(Categories(tag))
+
     def setSeries(self, series):
-        #Given a csv of authors, convert it to a list
+        #Given a csv of series, convert it to a list
         #print (f"Parsing series {series}")
         if len(series.strip()):
             for s in list([series]):
@@ -136,6 +192,7 @@ class Book:
     def getDictionary(self, book, ns=""):
         book[f"{ns}matchRate"]=self.matchRate
         book[f"{ns}asin"]=self.asin
+        book[f"{ns}isbn"]=self.isbn
         book[f"{ns}title"]=self.title
         book[f"{ns}subtitle"]=self.subtitle
         book[f"{ns}publicationName"]=self.publicationName
@@ -145,18 +202,25 @@ class Book:
         book[f"{ns}authors"]=self.getAuthors()
         book[f"{ns}narrators"]=self.getNarrators()
         book[f"{ns}seriesparts"]=self.getSeriesParts()
+        book[f"{ns}genres"]=self.getGenres()
+        book[f"{ns}tags"]=self.getTags()
         book[f"{ns}language"]=self.language
         return book  
     
     def init(self):
         self.asin=""
+        self.isbn=""
         self.title=""
         self.subtitle=""
+        self.publication_year=""
         self.publicationName=""
+        self.publisher=""
         self.duration=""
         self.series=[]
         self.authors=[]
         self.narrators=[]
+        self.genres=[]
+        self.tags=[]
 
     def getAllButTitle(self):
         book={}

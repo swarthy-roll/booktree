@@ -248,7 +248,11 @@ def readLog(logFilePath, books):
                 print(f"file {logFilePath}: {e}")
 
 def getLogHeaders():
-    headers=['book', 'file', 'paths', 'isMatched', 'isHardLinked', 'mamCount', 'audibleMatchCount', 'metadatasource', 'id3-matchRate', 'id3-asin', 'id3-title', 'id3-subtitle', 'id3-publicationName', 'id3-length', 'id3-duration', 'id3-series', 'id3-authors', 'id3-narrators', 'id3-seriesparts', 'id3-language', 'mam-matchRate', 'mam-asin', 'mam-title', 'mam-subtitle', 'mam-publicationName', 'mam-length', 'mam-duration', 'mam-series', 'mam-authors', 'mam-narrators', 'mam-seriesparts', 'mam-language', 'adb-matchRate', 'adb-asin', 'adb-title', 'adb-subtitle', 'adb-publicationName', 'adb-length', 'adb-duration', 'adb-series', 'adb-authors', 'adb-narrators', 'adb-seriesparts', 'adb-language', 'sourcePath', 'mediaPath']
+    headers=['book', 'file', 'paths', 'isMatched', 'isHardLinked', 'mamCount', 'audibleMatchCount', 'metadatasource'
+             , 'id3-matchRate', 'id3-asin', 'id3-title', 'id3-subtitle', 'id3-publicationName', 'id3-length', 'id3-duration', 'id3-series', 'id3-authors', 'id3-narrators', 'id3-seriesparts', 'id3-language', 'id3-isbn', 'id3-tags', 'id3-genres'
+             , 'mam-matchRate', 'mam-asin', 'mam-title', 'mam-subtitle', 'mam-publicationName', 'mam-length', 'mam-duration', 'mam-series', 'mam-authors', 'mam-narrators', 'mam-seriesparts', 'mam-language', 'mam-isbn', 'mam-tags', 'mam-genres'
+             , 'adb-matchRate', 'adb-asin', 'adb-title', 'adb-subtitle', 'adb-publicationName', 'adb-length', 'adb-duration', 'adb-series', 'adb-authors', 'adb-narrators', 'adb-seriesparts', 'adb-language'
+             , 'sourcePath', 'mediaPath']
                     
     return dict.fromkeys(headers)
 
@@ -274,6 +278,12 @@ def createOPF(book, path):
         # - Description -
         template = re.sub(r"__DESCRIPTION__", book.description, template)
 
+        # - Publication Year -
+        template = re.sub(r"__DATE__", book.publication_year or "", template)
+
+        # - Publisher -
+        template = re.sub(r"__PUBLISHER__", book.publisher or "", template)
+
         # - Narrator -
         narrators=""
         for narrator in book.narrators:
@@ -283,6 +293,9 @@ def createOPF(book, path):
         # - ASIN -
         template = re.sub(r"__ASIN__", book.asin, template)
 
+        # - ISBN -
+        template = re.sub(r"__ISBN__", book.isbn or "", template)
+
         # - Series -
         series=""
         for s in book.series:
@@ -290,15 +303,20 @@ def createOPF(book, path):
             series += f"\t<ns0:meta name='calibre:series_index' content='{s.part}' />\n"
         template = re.sub(r"__SERIES__", series, template)
 
+        # - Genres -
+        genres=""
+        for genre in book.genres:
+            genres += f"\t<dc:subject>{genre.name}</dc:subject>'\n"
+        template = re.sub(r"__GENRES__", genres, template)
+
+        # - Tags - 
+        tags=""
+        for tag in book.tags:
+            tags += f"\t<dc:tag>{tag.name}</dc:tag>'\n"
+        template = re.sub(r"__TAGS__", tags, template)
+
         # - Language -
         template = re.sub(r"__LANGUAGE__", book.language, template)
-        
-        # if len(book.series) and len(book.series[0].name):
-        #     template = re.sub(r"__SERIES__", book.series[0].name, template)
-        #     template = re.sub(r"__SERIESPART__", book.series[0].part, template)
-        # else:
-        #     template = re.sub(r"__SERIES__", "", template)
-        #     template = re.sub(r"__SERIESPART__", "", template)
 
         opfFile=os.path.join(path, "metadata.opf")
         with open(opfFile, mode='w', encoding='utf-8') as file:

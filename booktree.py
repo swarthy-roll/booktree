@@ -10,6 +10,7 @@ import myx_mam
 import myx_args
 import csv
 import httpx
+import goodreads
 
 #Main Functions
 def buildTreeFromLog(files, logfile, cfg):
@@ -136,6 +137,7 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     normalBooks=[]
     matchedFiles=[]
     unmatchedFiles=[]
+    goodreads_book = goodreads.Goodreads()
 
     #config variables
     format = files
@@ -275,6 +277,9 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
                         if id3BestMatch is not None:
                             book[b].metadata = "audible" 
 
+            # Scrape available metadata from Goodreads
+            bk = book[b].bestMAMMatch
+            book[b].bestMAMMatch = goodreads_book.fetch_all(bk,title=bk.getCleanTitle(),author=bk.getAuthors())
 
             print (f"Found {len(book[b].mamMatches)} MAM matches, {len(book[b].audibleMatches)} Audible Matches")
             myx_utilities.printDivider()
@@ -288,7 +293,10 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
 
         else:
             print(f"Skipping: {book[b].name}...")
-        
+
+    # goodreads scraping is finished, kill the webdriver    
+    goodreads_book.stop_webdriver(goodreads_book.driver)
+    
     #Create Hardlinks
     print (f"\nCreating Hardlinks for {len(matchedFiles)} matched books\n")
     for mb in matchedFiles:
