@@ -16,12 +16,14 @@ import time
 @dataclass
 class Goodreads:
     driver: webdriver
+    is_signup_modal_dismissed: bool
     genre_limit: int = 2
     goodreads_url: str = "https://www.goodreads.com"
     base_search_url: str = goodreads_url + "/search?q="
     
     def __init__(self):
         self.driver=self.start_webdriver(True)
+        self.is_signup_modal_dismissed = False
 
     def fetch_all(self, book, isbn="", title="", author=""):
         try:
@@ -31,36 +33,37 @@ class Goodreads:
             # get the HTML for the book page
             page = self.get_book_page_content(url, self.driver)
 
-            # parse for the original publication year
-            book.publication_year = self.get_original_publication_year(page)
+            if page:
+                # parse for the original publication year
+                book.publication_year = self.get_original_publication_year(page)
 
-            # parse for the description
-            book.description = self.get_description(page)
+                # parse for the description
+                book.description = self.get_description(page)
 
-            # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
-            categories = ','.join(self.get_genres(page))
+                # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
+                categories = ','.join(self.get_genres(page))
 
-            # use the categories data to set the genres
-            book.setGenres(categories)
+                # use the categories data to set the genres
+                book.setGenres(categories)
 
-            # use the categories data to set the tags
-            book.setTags(categories)
+                # use the categories data to set the tags
+                book.setTags(categories)
 
-            # parse for the series
-            series = self.get_series(page)
-            
-            book.series.clear()
-            if series:
-                for name, part in series.items():
-                    book.series.append(myx_classes.Series(name, part))
+                # parse for the series
+                series = self.get_series(page)
+                
+                book.series.clear()
+                if series:
+                    for name, part in series.items():
+                        book.series.append(myx_classes.Series(name, part))
 
-            # parse for the publisher
-            book.publisher = self.get_publisher(page)
+                # parse for the publisher
+                book.publisher = self.get_publisher(page)
 
-            # parse for the ISBN
-            book.isbn = self.get_isbn(page)
+                # parse for the ISBN
+                book.isbn = self.get_isbn(page)
 
-            return book
+                return book
         except Exception as e:
             print("Encountered an issue fetching Goodreads metadata")
 
@@ -113,7 +116,7 @@ class Goodreads:
         except httpx.HTTPStatusError as e:
             print(f"An error occurred: the server returned a {e.response.status_code} code")
         except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            print(f"Goodreads search {search_url} returned zero results.")
 
     def click_button(self, driver, xpath, wait, sleep=0, scroll=False):
         try:
@@ -134,8 +137,10 @@ class Goodreads:
         try:
             driver.get(book_url)
             
-            # Dismiss the sign-in modal
-            self.click_button(driver, xpath="//button[@aria-label='Close']", wait=3)
+            # Dismiss the sign-in modal. If this is present at all, dismissing it should dismiss it for the duration of scraping session
+            if self.is_signup_modal_dismissed is False:
+                self.click_button(driver, xpath="//button[@aria-label='Close']", wait=3)
+                self.is_signup_modal_dismissed = True
 
             # Click "...more" button
             self.click_button(driver, xpath="//button[@aria-label='Show all items in the list']", wait=3, sleep=1)
