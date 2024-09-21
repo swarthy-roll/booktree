@@ -24,42 +24,45 @@ class Goodreads:
         self.driver=self.start_webdriver(True)
 
     def fetch_all(self, book, isbn="", title="", author=""):
-        # get the url for the book page on goodreads
-        url = self.search_goodreads(isbn, title, author)
+        try:
+            # get the url for the book page on goodreads
+            url = self.search_goodreads(isbn, title, author)
 
-        # get the HTML for the book page
-        page = self.get_book_page_content(url, self.driver)
+            # get the HTML for the book page
+            page = self.get_book_page_content(url, self.driver)
 
-        # parse for the original publication year
-        book.publication_year = self.get_original_publication_year(page)
+            # parse for the original publication year
+            book.publication_year = self.get_original_publication_year(page)
 
-        # parse for the description
-        book.description = self.get_description(page)
+            # parse for the description
+            book.description = self.get_description(page)
 
-        # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
-        categories = ','.join(self.get_genres(page))
+            # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
+            categories = ','.join(self.get_genres(page))
 
-        # use the categories data to set the genres
-        book.setGenres(categories)
+            # use the categories data to set the genres
+            book.setGenres(categories)
 
-        # use the categories data to set the tags
-        book.setTags(categories)
+            # use the categories data to set the tags
+            book.setTags(categories)
 
-        # parse for the series
-        series = self.get_series(page)
-        
-        book.series.clear()
-        if series:
-            for name, part in series.items():
-                book.series.append(myx_classes.Series(name, part))
+            # parse for the series
+            series = self.get_series(page)
+            
+            book.series.clear()
+            if series:
+                for name, part in series.items():
+                    book.series.append(myx_classes.Series(name, part))
 
-        # parse for the publisher
-        book.publisher = self.get_publisher(page)
+            # parse for the publisher
+            book.publisher = self.get_publisher(page)
 
-        # parse for the ISBN
-        book.isbn = self.get_isbn(page)
+            # parse for the ISBN
+            book.isbn = self.get_isbn(page)
 
-        return book
+            return book
+        except Exception as e:
+            print("Encountered an issue fetching Goodreads metadata")
 
     def start_webdriver(self, headless):
         try:    

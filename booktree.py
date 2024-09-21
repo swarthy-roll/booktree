@@ -278,8 +278,13 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
                             book[b].metadata = "audible" 
 
             # Scrape available metadata from Goodreads
-            bk = book[b].bestMAMMatch
-            book[b].bestMAMMatch = goodreads_book.fetch_all(bk,title=bk.getCleanTitle(),author=bk.getAuthors())
+            try:
+                bk = book[b].bestMAMMatch
+                print(f"Clean title: {bk.getCleanTitle()}")
+                book[b].bestMAMMatch = goodreads_book.fetch_all(bk,title=bk.getCleanTitle(),author=bk.getAuthors())
+            except Exception as e:
+                print("Couldn't get Goodreads data")
+                book[b].bestMAMMatch = bk
 
             print (f"Found {len(book[b].mamMatches)} MAM matches, {len(book[b].audibleMatches)} Audible Matches")
             myx_utilities.printDivider()
