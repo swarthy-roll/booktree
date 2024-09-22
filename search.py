@@ -37,7 +37,7 @@ class Search:
                 # if the engine is goodreads and the search string is ISBN, return the base URL + ISBN
                 return f"{self.base_url}{isbn}"
             elif self.engine == "google":
-                search_url = f"{self.base_url}{self.google_site_prefix}{self.search_engines.get("goodreads")} {title} {author}"
+                search_url = f"{self.base_url}{self.google_site_prefix} www.goodreads.com {title} {author}"
             else:
                 # catch-all if only the title is available.
                 search_url = f"{self.base_url}{title}"
