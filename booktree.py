@@ -225,13 +225,16 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     #At this point all Book files should have already been probed
 
     #Find Book Matches from MAM and Audible
-    print(f"\nPreparing to process {len(book)} books...\n")
-    for b in book.keys():    
+    index = 0
+    book_count = len(book)
+    print(f"\nPreparing to process {book_count} books...\n")
+    for b in book.keys():   
+        index += 1 
         #if this book has not been processed before AND it is not a multibook collection
         #print (f"Book: {b} isCached: {book[b].isCached('book')}")
         if ((no_cache) or (not book[b].isCached("book", cfg))):
             #process the book
-            print(f"Processing: {book[b].name}...")
+            print(f"Processing book {index}/{book_count}: {book[b].name}...")
             normalBooks.append(book[b])            
             #Process these books the same way, essentially based on the first book in the file list
             bf = book[b].files[0]
@@ -280,8 +283,7 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
             # Scrape available metadata from Goodreads
             try:
                 bk = book[b].bestMAMMatch
-                print(f"Clean title: {bk.getCleanTitle()}")
-                book[b].bestMAMMatch = goodreads_book.fetch_all(bk,title=bk.getCleanTitle(),author=bk.getAuthors())
+                book[b].bestMAMMatch = goodreads_book.fetch_all(bk,title=bk.title,author=bk.getAuthors())
             except Exception as e:
                 print("Couldn't get Goodreads data")
                 book[b].bestMAMMatch = bk

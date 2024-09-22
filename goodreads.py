@@ -17,12 +17,13 @@ import search
 @dataclass
 class Goodreads:
     driver: webdriver
-    is_signup_modal_dismissed: bool
     genre_limit: int = 2
+    xpath_close: str = "//button[@aria-label='Close']"
+    xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
+    xpath_book_details: str = "//button[@aria-label='Book details and editions']"
     
     def __init__(self):
         self.driver=self.start_webdriver(True)
-        self.is_signup_modal_dismissed = False
 
     def fetch_all(self, book, isbn="", title="", author=""):
         try:
@@ -91,39 +92,13 @@ class Goodreads:
         except Exception as e:
             print(f"An error occurred while quitting the webdriver service {e}")
 
-    def search_goodreads(self, isbn="",title="",author=""):
-
-        if len(isbn) > 0:
-            search_url = f"{self.goodreads_search_url}{isbn}"
-            # A goodreads search for the ISBN redirects directly to the book page. So if the ISBN is known, scraping for the URL is unnecesary.
-            return search_url
-        else:
-            search_url = f"{self.goodreads_search_url}{title} {author}"
-
-        try:
-            response = httpx.get(search_url, headers=self.headers)
-            response.raise_for_status()
-
-            # Parse the book page HTML
-            search = BeautifulSoup(response.content, "html.parser")
-            top_book = search.find("a", class_="bookTitle")
-
-            if top_book:
-                # Return the first item in the search results and clean up the URL by stripping off all params
-                return self.goodreads_url + top_book["href"].split('?')[0]
-            
-        except httpx.HTTPStatusError as e:
-            print(f"An error occurred: the server returned a {e.response.status_code} code")
-        except Exception as e:
-            print(f"Goodreads search {search_url} returned zero results.")
-
     def click_button(self, driver, xpath, wait, sleep=0, scroll=False):
         try:
             button = WebDriverWait(driver, wait).until(EC.element_to_be_clickable((By.XPATH, xpath)))
             if button:
                 if scroll:
                     actions = ActionChains(driver)
-                    actions.move_to_element(button).perform()  
+                    actions.move_to_element(button).perform() 
                 button.click()
                 time.sleep(sleep)
         except Exception as e:
@@ -136,16 +111,14 @@ class Goodreads:
         try:
             driver.get(book_url)
             
-            # Dismiss the sign-in modal. If this is present at all, dismissing it should dismiss it for the duration of scraping session
-            if self.is_signup_modal_dismissed is False:
-                self.click_button(driver, xpath="//button[@aria-label='Close']", wait=3)
-                self.is_signup_modal_dismissed = True
+            # Dismiss the sign-in modal
+            self.click_button(driver, xpath=self.xpath_close, wait=3)
 
             # Click "...more" button
-            self.click_button(driver, xpath="//button[@aria-label='Show all items in the list']", wait=3, sleep=1)
+            self.click_button(driver, xpath=self.xpath_show_all, wait=3, sleep=1)
 
             # Click "Book details & editions" button
-            self.click_button(driver, xpath="//button[@aria-label='Book details and editions']", wait=3, sleep=1, scroll=True)
+            self.click_button(driver, xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
 
             # Use beautifulsoup to parse the HTML and return that to the caller
             return BeautifulSoup(driver.page_source, "html.parser")
