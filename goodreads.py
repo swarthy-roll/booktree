@@ -12,14 +12,13 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.action_chains import ActionChains
 import myx_classes
 import time
+import search
 
 @dataclass
 class Goodreads:
     driver: webdriver
     is_signup_modal_dismissed: bool
     genre_limit: int = 2
-    goodreads_url: str = "https://www.goodreads.com"
-    base_search_url: str = goodreads_url + "/search?q="
     
     def __init__(self):
         self.driver=self.start_webdriver(True)
@@ -27,41 +26,43 @@ class Goodreads:
 
     def fetch_all(self, book, isbn="", title="", author=""):
         try:
-            # get the url for the book page on goodreads
-            url = self.search_goodreads(isbn, title, author)
+            # instantiate our search class and search for the book url
+            url = search.Search()
+            url.search(isbn, title, author)
 
-            # get the HTML for the book page
-            page = self.get_book_page_content(url, self.driver)
+            if url.book_url:
+                # get the HTML for the book page
+                page = self.get_book_page_content(url.book_url, self.driver)
 
-            if page:
-                # parse for the original publication year
-                book.publication_year = self.get_original_publication_year(page)
+                if page:
+                    # parse for the original publication year
+                    book.publication_year = self.get_original_publication_year(page)
 
-                # parse for the description
-                book.description = self.get_description(page)
+                    # parse for the description
+                    book.description = self.get_description(page)
 
-                # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
-                categories = ','.join(self.get_genres(page))
+                    # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
+                    categories = ','.join(self.get_genres(page))
 
-                # use the categories data to set the genres
-                book.setGenres(categories)
+                    # use the categories data to set the genres
+                    book.setGenres(categories)
 
-                # use the categories data to set the tags
-                book.setTags(categories)
+                    # use the categories data to set the tags
+                    book.setTags(categories)
 
-                # parse for the series
-                series = self.get_series(page)
-                
-                book.series.clear()
-                if series:
-                    for name, part in series.items():
-                        book.series.append(myx_classes.Series(name, part))
+                    # parse for the series
+                    series = self.get_series(page)
+                    
+                    book.series.clear()
+                    if series:
+                        for name, part in series.items():
+                            book.series.append(myx_classes.Series(name, part))
 
-                # parse for the publisher
-                book.publisher = self.get_publisher(page)
+                    # parse for the publisher
+                    book.publisher = self.get_publisher(page)
 
-                # parse for the ISBN
-                book.isbn = self.get_isbn(page)
+                    # parse for the ISBN
+                    book.isbn = self.get_isbn(page)
 
                 return book
         except Exception as e:
@@ -91,18 +92,16 @@ class Goodreads:
             print(f"An error occurred while quitting the webdriver service {e}")
 
     def search_goodreads(self, isbn="",title="",author=""):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-        }
+
         if len(isbn) > 0:
-            search_url = f"{self.base_search_url}{isbn}"
+            search_url = f"{self.goodreads_search_url}{isbn}"
             # A goodreads search for the ISBN redirects directly to the book page. So if the ISBN is known, scraping for the URL is unnecesary.
             return search_url
         else:
-            search_url = f"{self.base_search_url}{title} {author}"
+            search_url = f"{self.goodreads_search_url}{title} {author}"
 
         try:
-            response = httpx.get(search_url, headers=headers)
+            response = httpx.get(search_url, headers=self.headers)
             response.raise_for_status()
 
             # Parse the book page HTML
