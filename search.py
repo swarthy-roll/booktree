@@ -16,7 +16,7 @@ class Search:
     google_site_prefix: str = "site:"
     book_url: str = ""
 
-    def __post_init__(self):
+    def set_base_url(self):
         self.base_url = f"{self.search_engines.get(self.engine)}{self.search_endpoint}"
 
     def set_engine(self, isbn="", title="", author=""):
@@ -32,6 +32,7 @@ class Search:
         # if an ISBN is passed to Goodreads, Goodreads will redirect to the book page automatically
         try:
             self.set_engine(isbn, title, author)
+            self.set_base_url()
             if self.engine == "goodreads" and re.findall(self.isbn13_pattern,isbn):
                 # if the engine is goodreads and the search string is ISBN, return the base URL + ISBN
                 return f"{self.base_url}{isbn}"
@@ -56,7 +57,7 @@ class Search:
         except httpx.HTTPStatusError as e:
             print(f"ERROR: The {self.engine} server returned a {e.response.status_code} code. URL attemped: {search_url}.")
         except Exception as e:
-            print(f"Search error with URL")
+            print(f"Search error with URL {e}")
 
     def set_goodreads_book_url(self, page):
         # goodreads search results "a" tags all share the bookTitle class id, so we can choose the first result as the "best" result.
