@@ -2,7 +2,7 @@ from pathlib import Path
 from pprint import pprint
 from datetime import datetime
 from glob import iglob, glob
-import os, sys, subprocess, shlex, re
+import os, sys, time, subprocess, shlex, re
 import myx_classes
 import myx_audible
 import myx_utilities
@@ -11,6 +11,7 @@ import myx_args
 import csv
 import httpx
 import goodreads
+import timer
 
 #Main Functions
 def buildTreeFromLog(files, logfile, cfg):
@@ -138,6 +139,8 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     matchedFiles=[]
     unmatchedFiles=[]
     goodreads_book = goodreads.Goodreads()
+    
+    runtimer = timer.Timer() # for tracking elapsed runtime
 
     #config variables
     format = files
@@ -227,14 +230,14 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     #Find Book Matches from MAM and Audible
     index = 0
     book_count = len(book)
-    print(f"\nPreparing to process {book_count} books...\n")
+    print(f"\n{runtimer.get_elapsed_time()}\n\nPreparing to process {book_count} books...\n")
     for b in book.keys():   
         index += 1 
         #if this book has not been processed before AND it is not a multibook collection
         #print (f"Book: {b} isCached: {book[b].isCached('book')}")
         if ((no_cache) or (not book[b].isCached("book", cfg))):
             #process the book
-            print(f"Processing book {index}/{book_count}: {book[b].name}...")
+            print(f"Processing book {index}/{book_count}: {book[b].name}...{runtimer.get_elapsed_time()}...")
             normalBooks.append(book[b])            
             #Process these books the same way, essentially based on the first book in the file list
             bf = book[b].files[0]

@@ -1,4 +1,3 @@
-import httpx
 import re
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
@@ -77,6 +76,7 @@ class Goodreads:
                 options.add_argument("--window-size=1920,1080")
                 options.add_argument("--disable-blink-features=AutomationControlled")
                 options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
+                options.add_argument("--disk-cache-size=4096") # this option should help performance by caching common stuffs
 
             # Initialize the WebDriver
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),options=options)
