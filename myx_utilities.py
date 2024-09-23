@@ -50,7 +50,7 @@ def cleanseTitle(title="", stripaccents=True, stripUnabridged=False):
     #remove (Unabridged) and strip accents
     stdTitle=str(title)
 
-    for w in [" (Unabridged)", "m4b", "mp3", ",", "- "]:
+    for w in [" (Unabridged)", "m4b", "mp3", ",", "- ", "_", "epub"]:
         stdTitle=stdTitle.replace(w," ")
     
     if stripaccents:
@@ -266,14 +266,14 @@ def createOPF(book, path):
         # - Author -
         authors=""
         for author in book.authors:
-            authors += f"\t<dc:creator opf:role='aut'>{author.name}</dc:creator>\n"
+            authors += f"\t<dc:creator opf:role='aut'>{author.name.replace("&", "&amp;")}</dc:creator>\n"
         template = re.sub(r"__AUTHORS__", authors, template)
 
         # - Title -
-        template = re.sub(r"__TITLE__", book.title, template)
+        template = re.sub(r"__TITLE__", book.title.replace("&", "&amp;"), template)
 
         # - Subtitle -
-        template = re.sub(r"__SUBTITLE__", book.subtitle, template)
+        template = re.sub(r"__SUBTITLE__", book.subtitle.replace("&", "&amp;"), template)
 
         # - Description -
         template = re.sub(r"__DESCRIPTION__", book.description, template)
@@ -282,7 +282,7 @@ def createOPF(book, path):
         template = re.sub(r"__DATE__", book.publication_year or "", template)
 
         # - Publisher -
-        template = re.sub(r"__PUBLISHER__", book.publisher or "", template)
+        template = re.sub(r"__PUBLISHER__", book.publisher.replace("&", "&amp;") or "", template)
 
         # - Narrator -
         narrators=""
@@ -299,20 +299,20 @@ def createOPF(book, path):
         # - Series -
         series=""
         for s in book.series:
-            series += f"\t<ns0:meta name='calibre:series' content='{s.name}' />\n"
-            series += f"\t<ns0:meta name='calibre:series_index' content='{s.part}' />\n"
+            series += f"\t<ns0:meta name='calibre:series' content='{s.name.replace("&", "&amp;")}' />\n"
+            series += f"\t<ns0:meta name='calibre:series_index' content='{s.part.replace("&", "&amp;")}' />\n"
         template = re.sub(r"__SERIES__", series, template)
 
         # - Genres -
         genres=""
         for genre in book.genres:
-            genres += f"\t<dc:subject>{genre.name}</dc:subject>'\n"
+            genres += f"\t<dc:subject>{genre.name.replace("&", "&amp;")}</dc:subject>\n"
         template = re.sub(r"__GENRES__", genres, template)
 
         # - Tags - 
         tags=""
         for tag in book.tags:
-            tags += f"\t<dc:tag>{tag.name}</dc:tag>'\n"
+            tags += f"\t<dc:tag>{tag.name.replace("&", "&amp;")}</dc:tag>\n"
         template = re.sub(r"__TAGS__", tags, template)
 
         # - Language -
