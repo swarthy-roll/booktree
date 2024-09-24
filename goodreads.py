@@ -1,38 +1,31 @@
 import re
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.action_chains import ActionChains
 import myx_classes
 import time
 import search
+import agent
 
 @dataclass
 class Goodreads:
-    driver: webdriver
+    crawler: agent.Agent
     genre_limit: int = 2
     xpath_close: str = "//button[@aria-label='Close']"
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
     xpath_book_details: str = "//button[@aria-label='Book details and editions']"
     
     def __init__(self):
-        self.driver=self.start_webdriver(True)
+        self.crawler=agent.Agent(headless=True)
 
     def fetch_all(self, book, isbn="", title="", author=""):
         try:
             # instantiate our search class and search for the book url
             url = search.Search()
-            url.search(isbn, title, author)
+            url.search(self.crawler.driver, isbn, title, author)
 
             if url.book_url:
                 # get the HTML for the book page
-                page = self.get_book_page_content(url.book_url, self.driver)
+                page = self.get_book_page_content(url.book_url)
 
                 if page:
                     # parse for the original publication year
@@ -68,57 +61,22 @@ class Goodreads:
         except Exception as e:
             print("Encountered an issue fetching Goodreads metadata")
 
-    def start_webdriver(self, headless):
-        try:    
-            options = Options()
-            if headless:
-                options.add_argument("--headless=new")
-                options.add_argument("--window-size=1920,1080")
-                options.add_argument("--disable-blink-features=AutomationControlled")
-                options.add_argument("--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36")
-                options.add_argument("--disk-cache-size=4096") # this option should help performance by caching common stuffs
-
-            # Initialize the WebDriver
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()),options=options)
-
-            return driver
-        
-        except Exception as e:
-            print(f"Error occurred while instantiating webdriver {e}")
-
-    def stop_webdriver(self, driver):
-        try:
-            driver.quit()
-        except Exception as e:
-            print(f"An error occurred while quitting the webdriver service {e}")
-
-    def click_button(self, driver, xpath, wait, sleep=0, scroll=False):
-        try:
-            button = WebDriverWait(driver, wait).until(EC.element_to_be_clickable((By.XPATH, xpath)))
-            if button:
-                if scroll:
-                    actions = ActionChains(driver)
-                    actions.move_to_element(button).perform() 
-                button.click()
-                time.sleep(sleep)
-        except Exception as e:
-            print(f"Error interacting with button {xpath}. Usually this means the button isn't present to be interacted with.")
-
-    def get_book_page_content(self, book_url, driver):
+    def get_book_page_content(self, book_url):
         # Book pages unfortunately do not initially load all the metadata we require.
         # Before we parse the page HTML, we must click a few buttons to load all the metadata.
-        
+        driver = self.crawler.driver
+
         try:
             driver.get(book_url)
             
             # Dismiss the sign-in modal
-            self.click_button(driver, xpath=self.xpath_close, wait=3)
+            self.crawler.click_button(xpath=self.xpath_close, wait=3)
 
             # Click "...more" button
-            self.click_button(driver, xpath=self.xpath_show_all, wait=3, sleep=1)
+            self.crawler.click_button(xpath=self.xpath_show_all, wait=3, sleep=1)
 
             # Click "Book details & editions" button
-            self.click_button(driver, xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
+            self.crawler.click_button(xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
 
             # Use beautifulsoup to parse the HTML and return that to the caller
             return BeautifulSoup(driver.page_source, "html.parser")

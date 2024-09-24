@@ -1,4 +1,3 @@
-import httpx
 import re
 from dataclasses import dataclass, field
 from bs4 import BeautifulSoup
@@ -27,7 +26,7 @@ class Search:
         else:
             self.engine = "goodreads"
     
-    def search(self, isbn="", title="", author=""):
+    def search(self, driver, isbn="", title="", author=""):
         # the goal is to return a Goodreads URL for the book being searched for
         # if an ISBN is passed to Goodreads, Goodreads will redirect to the book page automatically
         try:
@@ -42,11 +41,10 @@ class Search:
                 # catch-all if only the title is available.
                 search_url = f"{self.base_url}{title}"
 
-            response = httpx.get(search_url, headers=self.headers)
-            response.raise_for_status()
+            driver.get(search_url)
 
             # parse the resulting page of HTML that comprises the search page
-            search_page = BeautifulSoup(response.content, "html.parser")
+            search_page = BeautifulSoup(driver.page_source, "html.parser")
 
             if search_page:
                 if self.engine == "google":
@@ -54,8 +52,6 @@ class Search:
                 else:
                     self.set_goodreads_book_url(search_page)
 
-        except httpx.HTTPStatusError as e:
-            print(f"ERROR: The {self.engine} server returned a {e.response.status_code} code. URL attemped: {search_url}.")
         except Exception as e:
             print(f"Search error with URL {e}")
 

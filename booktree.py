@@ -321,7 +321,7 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     print (f"\nLogging {len(normalBooks)} processed books")
     myx_utilities.logBooks(logfile, normalBooks, cfg)  
 
-    print(f"Completed processing {len(normalBooks)} books. {len(matchedFiles)}/{len(normalBooks) - len(matchedFiles)} match/unmatch ratio.")
+    print(f"Completed processing {len(normalBooks)} books. {len(matchedFiles)}/{len(normalBooks) - len(matchedFiles)} match/unmatch ratio.\n\nTotal {runtimer.get_elapsed_time()}")
     myx_utilities.printDivider()
 
 
