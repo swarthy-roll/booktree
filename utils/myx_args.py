@@ -46,22 +46,6 @@ def importArgs():
     #set module variable to args
     return args
 
-def merge_dictionaries_recursively (dict1, dict2):
-    """ Update two config dictionaries recursively.
-        Args:
-            dict1 (dict): first dictionary to be updated
-            dict2 (dict): second dictionary which entries should be preferred
-    """
-    if dict2 is None: return
-
-    for k, v in dict2.items():
-        if k not in dict1:
-            dict1[k] = dict()
-        if isinstance(v, dict):
-            merge_dictionaries_recursively (dict1[k], v)
-        else:
-            dict1[k] = v    
-
 class Config(object):  
     """ Simple dict wrapper that adds a thin API allowing for slash-based retrieval of
         nested elements, e.g. cfg.get_config("meta/dataset_name")

@@ -1,0 +1,37 @@
+import yaml
+
+class Config:
+    config_file:str='config.yaml'
+    file_types_to_process:list
+    source_directory:str
+    target_directory:str
+    create_opf_files:bool
+    verbose:bool
+
+    def __init__(self):
+        with open(self.config_file, "r") as file:
+            data = yaml.safe_load(file)
+        self.load_config(**data)
+
+    def reload(self):
+        with open(self.config_file, "r") as file:
+            data = yaml.safe_load(file)
+        self.__dict__.update(data)
+
+    def __repr__(self):
+        return (
+            f"Config(\n"
+            f"  file_types_to_process={self.file_types_to_process},\n"
+            f"  source_directory='{self.source_directory}',\n"
+            f"  target_directory='{self.target_directory}',\n"
+            f"  create_opf_files={self.create_opf_files},\n"
+            f"  verbose={self.verbose}\n"
+            f")"
+        )
+
+    def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose):
+        self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process] # append the wildcards to each file type for proper extension identification
+        self.source_directory = source_directory
+        self.target_directory = target_directory
+        self.create_opf_files = create_opf_files
+        self.verbose = verbose

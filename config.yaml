@@ -1,0 +1,7 @@
+file_types_to_process:
+  - epub
+  - pdf
+source_directory: C:\Users\Aaron\Documents
+target_directory: C:\Users\Aaron\Documents\target
+create_opf_files: true
+verbose: true

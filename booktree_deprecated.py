@@ -1,17 +1,11 @@
-from pathlib import Path
-from pprint import pprint
 from datetime import datetime
-from glob import iglob, glob
-import os, sys, time, subprocess, shlex, re
-import myx_classes
-import myx_audible
-import myx_utilities
-import myx_mam
-import myx_args
+from glob import iglob
+import os, sys
+import utils.myx_args as myx_args
 import csv
 import httpx
-import goodreads
-import timer
+import utils.goodreads as goodreads
+import utils.timer as timer
 
 #Main Functions
 def buildTreeFromLog(files, logfile, cfg):
@@ -155,7 +149,6 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
     #if there were no patters provided, grab ALL known audiobooks, currently these are M4B and MP3 files
     #find all files that fit the pattern
     for f in format:
-        pattern = f.translate({ord('['):'[[]', ord(']'):'[]]'})
         print (f"Looking for {f} from {path}")
         allFiles.extend(iglob(f, root_dir=path, recursive=True))
 
@@ -305,7 +298,7 @@ def buildTreeFromHybridSources(path, mediaPath, files, logfile, cfg):
             print(f"Skipping: {book[b].name}...")
 
     # goodreads scraping is finished, kill the webdriver    
-    goodreads_book.stop_webdriver(goodreads_book.driver)
+    goodreads_book.crawler.stop_webdriver()
     
     #Create Hardlinks
     print (f"\nCreating Hardlinks for {len(matchedFiles)} matched books\n")

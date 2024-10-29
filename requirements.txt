@@ -6,3 +6,7 @@ thefuzz==0.22.1
 beautifulsoup4==4.12.3
 selenium==4.24.0
 webdriver-manager==4.0.2
+peewee==3.17.6
+PyYAML==6.0.2
+EbookLib==0.18
+watchdog==5.0.3

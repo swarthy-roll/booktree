@@ -1,10 +1,11 @@
 import re
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
-import myx_classes
 import time
-import search
-import agent
+import utils.search as search
+import utils.agent as agent
+import random
+import entities.series as Series
 
 @dataclass
 class Goodreads:
@@ -19,6 +20,9 @@ class Goodreads:
 
     def fetch_all(self, book, isbn="", title="", author=""):
         try:
+            # bot detection mitigation effort...
+            time.sleep(random.randint(30, 56))
+            
             # instantiate our search class and search for the book url
             url = search.Search()
             url.search(self.crawler.driver, isbn, title, author)
@@ -49,7 +53,7 @@ class Goodreads:
                     book.series.clear()
                     if series:
                         for name, part in series.items():
-                            book.series.append(myx_classes.Series(name, part))
+                            book.series.append(Series(name, part))
 
                     # parse for the publisher
                     book.publisher = self.get_publisher(page)

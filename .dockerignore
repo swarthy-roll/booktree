@@ -11,3 +11,4 @@ config/*
 private.txt
 *.pkl
 mousearr.py
+*.db
