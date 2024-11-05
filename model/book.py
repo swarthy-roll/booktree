@@ -1,4 +1,5 @@
-from peewee import BooleanField, CharField, FloatField, IntegerField, TextField
+from peewee import BooleanField, CharField, FloatField, IntegerField, TextField, DateTimeField
+from datetime import datetime
 from model import base_model as bm
 
 class Book(bm.Base_Model):
@@ -11,8 +12,9 @@ class Book(bm.Base_Model):
     publisher = CharField(null=True)
     length = IntegerField(default=0)
     duration = FloatField(default=0.0)
-    matchRate = FloatField(default=0.0)
+    match_rate = FloatField(default=0.0)
     language = CharField(default="English")
     snatched = BooleanField(default=False)
     description = TextField(null=True)
     source = IntegerField()
+    timestamp = DateTimeField(default = datetime.now())

@@ -3,20 +3,18 @@ import database.table as Table
 #import utils.file as file
 import utils.scanner as Scanner
 import utils.config as Config
-import entities.file as File
+import logging
+
 
 def main():
     # timer begin
     # get all files
+    logger = logging.getLogger('peewee')
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.DEBUG)
     config = Config.Config()
     print(config)
 
-    #file = File.File(r"C:\Users\Aaron\Documents\Jeff VanderMeer - Authority.epub", config)
-    #print(file)
-    #for f in file.get_all_files(config.source_directory,config.file_types_to_process):
-    #    print(f)
-
-    #    file.probe_file(r"C:\Users\Aaron\Documents\\" + f)
     directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
     directory_scanner.start()
 
@@ -40,7 +38,7 @@ def main():
 
 if __name__ == '__main__':
     # TODO: add logic to delete tables when in dev mode
-    Table.drop_all_tables()
+    #Table.drop_all_tables()
     Table.create_tables()
 
     main()

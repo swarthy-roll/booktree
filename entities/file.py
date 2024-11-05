@@ -1,9 +1,12 @@
 from dataclasses import dataclass, field
 import os, subprocess, re, json, hashlib
 from ebooklib import epub
+from peewee import IntegrityError
 from pathvalidate import sanitize_filename
 from utils import utils, config
 import entities.book as Book, entities.series as Series, entities.contributor as Contributor
+from model.file import File as File_Model
+from model.book_file import Book_File as Book_File_Model
 
 @dataclass
 class File:
@@ -13,16 +16,18 @@ class File:
     extension:str = ""
     media_path:str = ""
     fingerprint:str = ""
-    is_matched:bool=False
-    is_hardlinked:bool=False
-    book:list[Book.Book]= field(default_factory=list)
+    is_matched:bool = False
+    is_hardlinked:bool = False
+    book:list[Book.Book] = field(default_factory=list)
 
     def __init__(self, full_path:str, config:config.Config):
-        self.full_path = full_path
+        self.book = []
+        self.set_full_path(full_path)
         self.set_file_name()
-        self.source_path = config.source_directory
+        self.set_source_path()
         self.set_extension()
         self.set_fingerprint()
+        self.probe_file()
 
     def __str__(self):
         return (
@@ -39,6 +44,12 @@ class File:
     
     def set_file_name(self):
         self.file_name = self.parse_file_name()
+
+    def set_full_path(self, full_path:str):
+        self.full_path = full_path
+    
+    def set_source_path(self):
+        self.source_path = os.path.dirname(self.full_path)
 
     def set_extension(self):
         self.extension = self.parse_extension()
@@ -60,6 +71,34 @@ class File:
         except Exception as e:
             print(f"Error while generating a fingerprint for {self.full_path}: {e}")
 
+    def save(self):
+        with File_Model._meta.database.atomic() as transaction:
+            try:
+                file, created = File_Model.get_or_create(file_name=self.file_name,
+                                                        full_path=self.full_path,
+                                                        source_path=self.source_path,
+                                                        extension=self.extension,
+                                                        media_path=self.media_path,
+                                                        fingerprint=self.fingerprint,
+                                                        is_matched=self.is_matched,
+                                                        is_hardlinked=self.is_hardlinked)
+                if created:
+                    for book in self.book: 
+                        book = book.save()
+                        Book_File_Model.get_or_create(book=book, file=file)
+            except IntegrityError as e:
+                print(f"ERROR: could not save file record: {self.__str__()}: {e}") 
+                transaction.rollback()
+
+    def move(self, destination):
+        try:
+            self.set_full_path(destination)
+            self.set_source_path()
+            
+            File_Model.update(full_path=self.full_path, source_path=self.source_path)
+        except IntegrityError as e:
+            print(f"ERROR: could not update file after move: {self.__str__()}: {e}")
+    
     def parse_extension(self):
         return os.path.splitext(self.file_name)[1].replace(".","")
 
@@ -85,23 +124,72 @@ class File:
         out, err =  p.communicate()
         return json.loads(out)
 
-    def probe_file(file_path):
+    def probe_file(self):
+
+        match self.extension:
+            case "epub":
+                metadata = self._probe_epub()
+            case "pdf":
+                metadata = None
+        try:
+            if metadata:
+                mapping = self._metadata_mapping()
+                genres = metadata.get(mapping.get("genres"), None)
+                tags = metadata.get(mapping.get("tags"), None)
+                book = Book.Book(source=1)
+                book.title = metadata.get(mapping.get("title"), None)
+                book.subtitle = metadata.get(mapping.get("subtitle"), None)
+                book.set_authors(metadata.get(mapping.get("authors"), None))
+                book.publisher = metadata.get(mapping.get("publisher"), None)
+                book.language = metadata.get(mapping.get("language"), None)
+                book.description = metadata.get(mapping.get("description"), None)
+                book.set_genres(metadata.get(mapping.get("genres"), None))
+                book.set_tags(tags if tags is not None else genres) #by default, look for explicit tags, but fallback on genres (if they exist)
+                book.publication_year = metadata.get(mapping.get("publication_year"), None)
+                book.set_series(metadata.get(mapping.get("series"), None))
+
+                print(book)
+                self.book.append(book)
+        except Exception as e:
+            print(f"ERROR: could not create book object for {self.file_name}: {e}")
+
+    def _metadata_mapping(self):
+        return {
+                "epub": {"title": "title",
+                         "subtitle": "subtitle",
+                         "authors": "creator",
+                         "publisher": "publisher",
+                         "language": "language",
+                         "description": "description",
+                         "genres": "subject",
+                         "tags": "tag",
+                         "publication_year": "date",
+                         "series": "calibre:series"
+                         }
+                ,"pdf": {"title": "title", "subtitle": "subtitle"}
+        }.get(self.extension)
+
+    def _probe_epub(self):
         attributes = {'DC': ['identifier','title','subtitle','language','contributor','coverage','creator','date','description','format','publisher','relation','rights','source','subject','type','tag']
                     ,'OPF': ['calibre:series','calibre:series_index']}
         try:
-            book = epub.read_epub(file_path)
+            book = epub.read_epub(self.full_path)
+            result = {}
 
             for namespace, fields in attributes.items():
                 for field in fields:
                     metadata = book.get_metadata(namespace, field)
                     if metadata:
-                        field_values = ', '.join([v[0] for v in metadata if v[0]])
-                        print(f"{field}: {field_values}")
+                        field_values = ','.join([v[0] for v in metadata if v[0]])
+                        result[field] = field_values
                     else:
-                        print(f"{field}: Not found")
+                        result[field] = None
+
+            return result
             
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"ERROR while probing the epub {self.full_path}: {e}")
+            return None
 
     def ffprobe(self):
         #ffprobe the file

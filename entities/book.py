@@ -1,9 +1,18 @@
 from dataclasses import dataclass, field
+from peewee import IntegrityError
 from glob import iglob
 from enum import Enum
 from utils import utils
-import entities.series as s, entities.contributor as contributor, entities.category as category
-import entities.genre as g
+from model.book import Book as Book_Model
+from model.book_author import Book_Author as Book_Author_Model
+from model.book_genres import Book_Genres as Book_Genres_Model
+from model.book_narrator import Book_Narrator as Book_Narrator_Model
+from model.book_series import Book_Series as Book_Series_Model
+from model.book_tags import Book_Tags as Book_Tags_Model
+from entities.series import Series as Series_Entity
+from entities.contributor import Contributor as Contributor_Entity
+from entities.category import Categories as Category_Entity
+from entities.genre import Genre as Genre_Entity
 import os, re
 
 class Source(Enum):
@@ -24,20 +33,39 @@ class Book:
     publisher:str=""
     length:int=0
     duration:float=0
-    matchRate:int=0
+    match_rate:int=0
     language:str="English"
     snatched:bool=False
     description:str=""
-    series:list[s.Series]= field(default_factory=list)
-    authors:list[contributor.Contributor]= field(default_factory=list)
-    narrators:list[contributor.Contributor]= field(default_factory=list)
-    genres:list[category.Categories]= field(default_factory=list)
-    tags:list[category.Categories]= field(default_factory=list)
+    series:list[Series_Entity]= field(default_factory=list)
+    authors:list[Contributor_Entity]= field(default_factory=list)
+    narrators:list[Contributor_Entity]= field(default_factory=list)
+    genres:list[Category_Entity]= field(default_factory=list)
+    tags:list[Category_Entity]= field(default_factory=list)
     files:list[str]= field(default_factory=list)
     source:Source=0
 
     def __init__(self, source:Source):
         self.source = source
+        self.series = []
+        self.authors = []
+        self.narrators = []
+        self.genres = []
+        self.tags = []
+
+    def __str__(self):
+        return (
+                f"title:             {self.title}\n"
+                f"subtitle:          {self.subtitle}\n"
+                f"authors:           {self.authors}\n"
+                f"language:          {self.language}\n"
+                f"publication year:  {self.publication_year}\n"
+                f"description:       {self.description}\n"
+                f"series:            {self.series}\n"
+                f"genres:            {self.genres}\n"
+                f"tags:              {self.tags}\n"
+                f"source:            {self.source}\n"
+            )
 
     def addFiles(self, file):
         self.files.append(file)
@@ -87,51 +115,114 @@ class Book:
         seriesparts = []
         for s in self.series:
             if len(s.name.strip()):
-                seriesparts.append(contributor.Contributor(f"{s.name} {s.separator}{s.part}")) 
+                seriesparts.append(Series_Entity(f"{s.name} {s.separator}{s.part}")) 
             
         return utils.getList(seriesparts, delimiter, encloser, stripaccents=True) 
     
-    def setAuthors(self, authors):
+    def set_authors(self, authors:str):
         #Given a csv of authors, convert it to a list
         if len(authors.strip()):
             for author in authors.split (","):
-                self.authors.append(contributor.Contributor(author))
+                self.authors.append(Contributor_Entity(author))
 
-    def setNarrators(self, narrators):
+    def set_narrators(self, narrators):
         #Given a csv of narrators, convert it to a list
         if len(narrators.strip()):
             for narrator in narrators.split (","):
-                self.narrators.append(contributor.Contributor(narrator))
+                self.narrators.append(Contributor_Entity(narrator))
 
-    def setGenres(self, genres, limit=2):
+    def set_genres(self, genres:str, limit=2):
         #Given a csv of genres, convert it to a list. Default is two, fiction/nonfiction use one of the default spots
-        if len(genres.strip()):
-            if any(genre in genres for genre in g.fiction):
-                self.genres.append(category.Categories("Fiction"))
-            elif any(genre in genres for genre in g.nonfiction):
-                self.genres.append(category.Categories("Nonfiction"))
-            else: 
-                self.genres.append(category.Categories("Unknown"))
+        if genres:
+            genre_entity = Genre_Entity()
+            genre_list = []
 
-            for genre in [genre for genre in genres.split(",") if genre not in g.top_level_genres][:limit-1]:
-                self.genres.append(category.Categories(genre))
+            for genre in genres.split(','):
+                genre_list.append(utils.to_camel_case(genre.strip()))
 
-    def setTags(self, tags):
+            if len(genres):
+                if any(genre for genre in genre_list if genre in genre_entity.fiction):
+                    self.genres.append(Category_Entity("Fiction"))
+                elif any(genre for genre in genres.split(",") if genre in genre_entity.nonfiction):
+                    self.genres.append(Category_Entity("Nonfiction"))
+                else: 
+                    self.genres.append(Category_Entity("Unknown"))
+
+                for genre in [genre for genre in genre_list if genre not in genre_entity.top_level_genres][:limit-1]:
+                    self.genres.append(Category_Entity(genre))
+
+    def set_tags(self, tags:str):
         #Given a csv of tags, convert it to a list
-        for tag in [tag for tag in tags.split(",") if tag not in g.top_level_genres]:
-            self.tags.append(category.Categories(tag))
+        if tags:
+            genre_entity = Genre_Entity()
+            tag_list = []
 
-    def setSeries(self, series):
+            for tag in tags.split(','):
+                tag_list.append(utils.to_camel_case(tag.strip()))
+
+            for tag in [tag for tag in tag_list if tag not in genre_entity.top_level_genres]:
+                self.tags.append(Category_Entity(tag))
+
+    def set_series(self, series:str):
         #Given a csv of series, convert it to a list
-        #print (f"Parsing series {series}")
-        if len(series.strip()):
-            for s in list([series]):
-                p = s.split("#")
-                #print (f"Series: {s}\nSplit: {p}")
-                if len(p) > 1: 
-                    self.series.append(s.Series(str(p[0]).strip(), str(p[1]).strip()))
-                else:
-                    self.series.append(s.Series(str(p[0]).strip(), ""))
+        if series:
+            if len(series.strip()):
+                for s in list([series]):
+                    p = s.split("#")
+                    #print (f"Series: {s}\nSplit: {p}")
+                    if len(p) > 1: 
+                        self.series.append(Series_Entity(str(p[0]).strip(), str(p[1]).strip()))
+                    else:
+                        self.series.append(Series_Entity(str(p[0]).strip(), ""))
+    
+    def save(self):
+        with Book_Model._meta.database.atomic() as transaction:
+            try:
+                book, result = Book_Model.get_or_create(asin=self.asin,
+                                                        isbn=self.isbn,
+                                                        title=self.title,
+                                                        subtitle=self.subtitle,
+                                                        publication_year=self.publication_year,
+                                                        publication_name=self.publication_name,
+                                                        publisher=self.publisher,
+                                                        length=self.length,
+                                                        duration=self.duration,
+                                                        match_rate=self.match_rate,
+                                                        language=self.language,
+                                                        snatched=self.snatched,
+                                                        description=self.description,
+                                                        source=self.source)
+                
+                for author in self.authors:
+                    author = author.save()
+
+                    Book_Author_Model.get_or_create(book=book, author=author)
+
+                for narrator in self.narrators:
+                    narrator = narrator.save()
+
+                    Book_Narrator_Model.get_or_create(book=book, narrator=narrator)
+                
+                for genre in self.genres:
+                    genre = genre.save()
+
+                    Book_Genres_Model.get_or_create(book=book, genres=genre)
+                
+                for tag in self.tags:
+                    tag = tag.save()
+
+                    Book_Tags_Model.get_or_create(book=book, tags=tag)
+                
+                for series in self.series:
+                    series = series.save()
+
+                    Book_Series_Model.get_or_create(book=book, series=series)
+                
+                return book
+
+            except IntegrityError as e:
+                print(f"ERROR: could not save book record: {self.__str__()}: {e}") 
+                transaction.rollback()
     
     def createOPF(self, path):
         try:
@@ -324,10 +415,10 @@ class Book:
     def getList(self, items, delimiter=",", encloser="", stripaccents=True):
         enclosedItems=[]
         for item in items:
-            if type(item) == contributor.Contributor:
+            if type(item) == Contributor_Entity:
                 enclosedItems.append(f"{encloser}{self.cleanseAuthor(item.name)}{encloser}")
             else:
-                if type(item) == s.Series:
+                if type(item) == Series_Entity:
                     enclosedItems.append(f"{encloser}{self.cleanseSeries(item.name)}{encloser}")
                 else:
                     enclosedItems.append(f"{encloser}{item.name}{encloser}")

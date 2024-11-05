@@ -69,3 +69,6 @@ def getLanguage(code):
     
     return lang.lower()
 
+def to_camel_case(string:str):
+    return ' '.join(word.capitalize() for word in string.split())
+    

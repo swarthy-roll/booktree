@@ -1,5 +1,6 @@
-from dataclasses import field
+from dataclasses import dataclass, field
 
+@dataclass
 class Genre:
     fiction: list = field(default_factory=lambda: ["Fiction","Fantasy","Science Fiction"
                                                     ,"High Fantasy","Epic Fantasy","Dark Fantasy"

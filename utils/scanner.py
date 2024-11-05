@@ -23,12 +23,20 @@ class Scanner:
             super().__init__()
             self.file_queue = file_queue
 
+        def dispatch(self, event):
+            print(f"Dispatched event type: {event.event_type}, Path: {event.src_path}")
+            super().dispatch(event)
+
         def on_created(self, event):
-            if not event.is_directory:
+            config = Config()
+            extension = os.path.splitext(event.src_path)[1].replace(".","")
+
+            if not event.is_directory and extension in config.file_types:
+                print("past the if")
                 time.sleep(.01) #wait for the file to be released by the system. copy/paste files creates a "file locked" issue which generates a permission denied error when reading the file briefly after creation
                 self.file_queue.put(event.src_path)
                 print(f"New file detected: {event.src_path}. Queue size now approx: {self.file_queue.qsize()}")
-                
+
     def start(self):
         # use separate threads for file processing, initial directory scan, and directory monitoring
         threading.Thread(target=self.process_files, daemon=True).start()
@@ -41,7 +49,7 @@ class Scanner:
             try:
                 print(f"Processing file: {file_path}")
                 file = File(full_path=file_path, config=self.config)
-                print(file)
+                file.save()
                 file = None
             except Exception as e:
                 print(f"Error processing {file_path}: {e}")
@@ -62,7 +70,7 @@ class Scanner:
         
         event_handler = self.NewFileHandler(self.file_queue)
         observer = Observer()
-        observer.schedule(event_handler, path=self.scan_target, recursive=False)
+        observer.schedule(event_handler, path=self.scan_target, recursive=True)
         observer.start()
 
         try:

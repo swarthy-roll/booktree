@@ -27,9 +27,9 @@ def create_tables():
 
         # todo: verbose flag
         db.connect()
-        for model in model_classes:
-            print(f"Creating the {model.__name__} table...")
-            db.create_tables([model])
+        #for model in model_classes:
+            #print(f"Creating the {model.__name__} table...")
+        db.create_tables(model_classes)
         db.close()
 
         print("All tables created successfully!")
@@ -41,6 +41,7 @@ def drop_all_tables():
     try:
         db.connect()
 
+        db.pragma('foreign_keys', 0) #turn off foreign keys temporarily so we can drop tables without foreign key constraint errors
         cursor = db.execute_sql("SELECT name FROM sqlite_master WHERE type='table';")
         tables = [row[0] for row in cursor.fetchall()]
 
@@ -48,6 +49,7 @@ def drop_all_tables():
             print(f"Dropping the {table} table...")
             db.execute_sql(f"DROP TABLE IF EXISTS {table};")
 
+        db.pragma('foreign_keys', 1) #turn foreign keys back on
         db.close()
         print("All tables dropped successfully.")
     

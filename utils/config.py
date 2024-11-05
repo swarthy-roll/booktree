@@ -3,6 +3,7 @@ import yaml
 class Config:
     config_file:str='config.yaml'
     file_types_to_process:list
+    file_types:list
     source_directory:str
     target_directory:str
     create_opf_files:bool
@@ -22,6 +23,7 @@ class Config:
         return (
             f"Config(\n"
             f"  file_types_to_process={self.file_types_to_process},\n"
+            f"  file_types={self.file_types},\n"
             f"  source_directory='{self.source_directory}',\n"
             f"  target_directory='{self.target_directory}',\n"
             f"  create_opf_files={self.create_opf_files},\n"
@@ -31,6 +33,7 @@ class Config:
 
     def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose):
         self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process] # append the wildcards to each file type for proper extension identification
+        self.file_types = file_types_to_process
         self.source_directory = source_directory
         self.target_directory = target_directory
         self.create_opf_files = create_opf_files
