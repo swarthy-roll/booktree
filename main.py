@@ -9,14 +9,14 @@ import logging
 def main():
     # timer begin
     # get all files
-    logger = logging.getLogger('peewee')
-    logger.addHandler(logging.StreamHandler())
-    logger.setLevel(logging.DEBUG)
+    #logger = logging.getLogger('peewee')
+    #logger.addHandler(logging.StreamHandler())
+    #logger.setLevel(logging.DEBUG)
     config = Config.Config()
     print(config)
 
-    directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
-    directory_scanner.start()
+    #directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
+    #directory_scanner.start()
 
     # iterate over every file
 

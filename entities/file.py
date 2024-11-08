@@ -3,7 +3,7 @@ import os, subprocess, re, json, hashlib
 from ebooklib import epub
 from peewee import IntegrityError
 from pathvalidate import sanitize_filename
-from utils import utils, config
+from utils import utils, config as Config, goodreads as Goodreads
 import entities.book as Book, entities.series as Series, entities.contributor as Contributor
 from model.file import File as File_Model
 from model.book_file import Book_File as Book_File_Model
@@ -18,16 +18,20 @@ class File:
     fingerprint:str = ""
     is_matched:bool = False
     is_hardlinked:bool = False
+    probe_results:str = ""
     book:list[Book.Book] = field(default_factory=list)
+    config:Config.Config = None
 
-    def __init__(self, full_path:str, config:config.Config):
+    def __init__(self, full_path:str, config:Config.Config):
         self.book = []
+        self.config = config
         self.set_full_path(full_path)
         self.set_file_name()
         self.set_source_path()
         self.set_extension()
         self.set_fingerprint()
         self.probe_file()
+        #start webscraper
 
     def __str__(self):
         return (
@@ -72,6 +76,8 @@ class File:
             print(f"Error while generating a fingerprint for {self.full_path}: {e}")
 
     def save(self):
+        # a transaction here helps in two ways. firstly, if something errors out, we don't get a partial commit. 
+        # secondly, a transaction prevents any race conditions. committing everything at once allows the db to commit items in the order needed
         with File_Model._meta.database.atomic() as transaction:
             try:
                 file, created = File_Model.get_or_create(file_name=self.file_name,
@@ -81,7 +87,9 @@ class File:
                                                         media_path=self.media_path,
                                                         fingerprint=self.fingerprint,
                                                         is_matched=self.is_matched,
-                                                        is_hardlinked=self.is_hardlinked)
+                                                        is_hardlinked=self.is_hardlinked,
+                                                        probe_results=self.probe_results
+                                                        )
                 if created:
                     for book in self.book: 
                         book = book.save()
@@ -118,6 +126,19 @@ class File:
     def parse_file_name(self):
         return os.path.basename(self.full_path)
 
+    def fetch_metadata(self):
+        if (self.book[0].authors and self.book[0].title) or self.book[0].isbn:
+            for source in self.config.fetch_metadata_from:
+                match source, self.extension:
+                    case "goodreads", 'epub':
+                        print("goodreads")
+                        goodreads = Goodreads.Goodreads()
+                        goodreads.fetch_all(Book.Book(source = 2),title=self.book[0].title,author=self.book[0].get_authors())
+                    case "audible":
+                        print("audible")
+                    case "mam":
+                        print("mam")
+
     def __probe_file__ (self):
         cmnd = ['ffprobe','-loglevel','error','-show_entries','format_tags:format=duration', '-of', 'default=noprint_wrappers=1:nokey=0', '-print_format', 'json', self.full_path]
         p = subprocess.Popen(cmnd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -136,7 +157,7 @@ class File:
                 mapping = self._metadata_mapping()
                 genres = metadata.get(mapping.get("genres"), None)
                 tags = metadata.get(mapping.get("tags"), None)
-                book = Book.Book(source=1)
+                book = Book.Book(source = 1)
                 book.title = metadata.get(mapping.get("title"), None)
                 book.subtitle = metadata.get(mapping.get("subtitle"), None)
                 book.set_authors(metadata.get(mapping.get("authors"), None))
@@ -147,6 +168,7 @@ class File:
                 book.set_tags(tags if tags is not None else genres) #by default, look for explicit tags, but fallback on genres (if they exist)
                 book.publication_year = metadata.get(mapping.get("publication_year"), None)
                 book.set_series(metadata.get(mapping.get("series"), None))
+                book.set_isbn(metadata.get(mapping.get("isbn"), None))
 
                 print(book)
                 self.book.append(book)
@@ -164,7 +186,8 @@ class File:
                          "genres": "subject",
                          "tags": "tag",
                          "publication_year": "date",
-                         "series": "calibre:series"
+                         "series": "calibre:series",
+                         "isbn": "identifier"
                          }
                 ,"pdf": {"title": "title", "subtitle": "subtitle"}
         }.get(self.extension)
@@ -174,6 +197,7 @@ class File:
                     ,'OPF': ['calibre:series','calibre:series_index']}
         try:
             book = epub.read_epub(self.full_path)
+            self.probe_results = book.metadata
             result = {}
 
             for namespace, fields in attributes.items():

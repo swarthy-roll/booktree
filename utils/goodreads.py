@@ -1,10 +1,8 @@
-import re
+import re, time, random
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
-import time
 import utils.search as search
 import utils.agent as agent
-import random
 import entities.series as Series
 
 @dataclass
@@ -42,10 +40,10 @@ class Goodreads:
                     categories = ','.join(self.get_genres(page))
 
                     # use the categories data to set the genres
-                    book.setGenres(categories)
+                    book.set_genres(categories)
 
                     # use the categories data to set the tags
-                    book.setTags(categories)
+                    book.set_tags(categories)
 
                     # parse for the series
                     series = self.get_series(page)

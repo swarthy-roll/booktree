@@ -81,33 +81,33 @@ class Book:
         
         return title
     
-    def getAuthors(self, delimiter=",", encloser="", stripaccents=True):
+    def get_authors(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.authors):
-            return utils.getList(self.authors, delimiter, encloser, stripaccents=True)
+            return self.getList(self.authors, delimiter, encloser, stripaccents=True)
         else:
             return ""
     
     def getSeries(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.series):
-            return utils.getList(self.series, delimiter, encloser, stripaccents=True)
+            return self.getList(self.series, delimiter, encloser, stripaccents=True)
         else:
             return ""
     
     def getNarrators(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.narrators):
-            return utils.getList(self.narrators, delimiter, encloser, stripaccents=True) 
+            return self.getList(self.narrators, delimiter, encloser, stripaccents=True) 
         else:
             return ""
         
     def getGenres(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.genres):
-            return utils.getList(self.genres, delimiter, encloser, stripaccents=True) 
+            return self.getList(self.genres, delimiter, encloser, stripaccents=True) 
         else:
             return ""
 
     def getTags(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.tags):
-            return utils.getList(self.tags, delimiter, encloser, stripaccents=True) 
+            return self.getList(self.tags, delimiter, encloser, stripaccents=True) 
         else:
             return ""
     
@@ -117,7 +117,7 @@ class Book:
             if len(s.name.strip()):
                 seriesparts.append(Series_Entity(f"{s.name} {s.separator}{s.part}")) 
             
-        return utils.getList(seriesparts, delimiter, encloser, stripaccents=True) 
+        return self.getList(seriesparts, delimiter, encloser, stripaccents=True) 
     
     def set_authors(self, authors:str):
         #Given a csv of authors, convert it to a list
@@ -175,6 +175,12 @@ class Book:
                     else:
                         self.series.append(Series_Entity(str(p[0]).strip(), ""))
     
+    def set_isbn(self, identifier:str):
+        # expects either a single isbn or a csv of identifiers that might have an isbn
+        pattern = r'^9\d{12}$'
+        items = identifier.split(',')
+        self.isbn = next((item for item in items if re.match(pattern, item)), None)
+
     def save(self):
         with Book_Model._meta.database.atomic() as transaction:
             try:

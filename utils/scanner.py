@@ -50,6 +50,7 @@ class Scanner:
                 print(f"Processing file: {file_path}")
                 file = File(full_path=file_path, config=self.config)
                 file.save()
+                
                 file = None
             except Exception as e:
                 print(f"Error processing {file_path}: {e}")

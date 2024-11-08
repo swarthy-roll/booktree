@@ -5,3 +5,7 @@ source_directory: C:\Users\Aaron\Documents\ebooks
 target_directory: C:\Users\Aaron\Documents\target
 create_opf_files: true
 verbose: true
+fetch_metadata_from:
+  - goodreads
+  - audible
+  - mam

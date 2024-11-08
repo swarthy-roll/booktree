@@ -8,6 +8,7 @@ class Config:
     target_directory:str
     create_opf_files:bool
     verbose:bool
+    fetch_metadata_from:list
 
     def __init__(self):
         with open(self.config_file, "r") as file:
@@ -28,13 +29,15 @@ class Config:
             f"  target_directory='{self.target_directory}',\n"
             f"  create_opf_files={self.create_opf_files},\n"
             f"  verbose={self.verbose}\n"
+            f"  fetch_metadata_from={self.fetch_metadata_from}\n"
             f")"
         )
 
-    def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose):
+    def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose, fetch_metadata_from):
         self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process] # append the wildcards to each file type for proper extension identification
         self.file_types = file_types_to_process
         self.source_directory = source_directory
         self.target_directory = target_directory
         self.create_opf_files = create_opf_files
         self.verbose = verbose
+        self.fetch_metadata_from = fetch_metadata_from

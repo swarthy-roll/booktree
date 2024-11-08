@@ -1,4 +1,4 @@
-from peewee import BooleanField, CharField, DateTimeField
+from peewee import BooleanField, CharField, DateTimeField, TextField
 from datetime import datetime
 from model import base_model as bm
 
@@ -11,4 +11,5 @@ class File(bm.Base_Model):
     fingerprint = CharField(max_length=65)
     is_matched = BooleanField(default=False)
     is_hardlinked = BooleanField(default=False)
+    probe_results = TextField(null=True)
     timestamp = DateTimeField(default = datetime.now())
