@@ -9,3 +9,4 @@ fetch_metadata_from:
   - goodreads
   - audible
   - mam
+headless_mode: true

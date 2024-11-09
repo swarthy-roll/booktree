@@ -14,11 +14,11 @@ def main():
     #logger = logging.getLogger('peewee')
     #logger.addHandler(logging.StreamHandler())
     #logger.setLevel(logging.DEBUG)
-    #config = Config.Config()
+    config = Config.Config()
     #print(config)
 
     isbn = '9781546434610'
-    goodreads = Goodreads()
+    goodreads = Goodreads(headless=config.headless_mode)
     book = goodreads.fetch_all(Book(2),isbn=isbn)
     #book = Book(1)
     #book.set_title("Testing: part 1")

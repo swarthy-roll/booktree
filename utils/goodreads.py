@@ -15,8 +15,8 @@ class Goodreads:
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
     xpath_book_details: str = "//button[@aria-label='Book details and editions']"
     
-    def __init__(self):
-        self.crawler=Agent(headless=True)
+    def __init__(self, headless:bool):
+        self.crawler = Agent(headless=headless)
 
     def fetch_all(self, book:Book, isbn="", title="", author=""):
         try:
