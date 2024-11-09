@@ -16,5 +16,6 @@ class Book(bm.Base_Model):
     language = CharField(default="English")
     snatched = BooleanField(default=False)
     description = TextField(null=True)
+    book_cover_url = CharField(null=True)
     source = IntegerField()
     timestamp = DateTimeField(default = datetime.now())

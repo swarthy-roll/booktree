@@ -46,7 +46,7 @@ def main():
 
 if __name__ == '__main__':
     # TODO: add logic to delete tables when in dev mode
-    #Table.drop_all_tables()
+    Table.drop_all_tables()
     Table.create_tables()
 
     main()

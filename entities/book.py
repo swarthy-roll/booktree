@@ -211,6 +211,7 @@ class Book:
                                                         language=self.language,
                                                         snatched=self.snatched,
                                                         description=self.description,
+                                                        book_cover_url=self.book_cover_url,
                                                         source=self.source)
                 
                 for author in self.authors:
