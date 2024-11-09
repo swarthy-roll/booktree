@@ -60,6 +60,7 @@ class Book:
                 f"authors:           {self.authors}\n"
                 f"language:          {self.language}\n"
                 f"publication year:  {self.publication_year}\n"
+                f"publisher:         {self.publisher}\n"
                 f"description:       {self.description}\n"
                 f"series:            {self.series}\n"
                 f"genres:            {self.genres}\n"

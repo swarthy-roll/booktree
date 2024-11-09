@@ -9,6 +9,7 @@ from entities.book import Book
 @dataclass
 class Goodreads:
     crawler: Agent
+    page_content: BeautifulSoup
     genre_limit: int = 2
     xpath_close: str = "//button[@aria-label='Close']"
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
@@ -29,21 +30,24 @@ class Goodreads:
             url.search(self.crawler.driver, isbn, title, author)
 
             if url.book_url:
-                # get the HTML for the book page
-                page = self.get_book_page_content(url.book_url)
+                # set the HTML for the book page
+                self.set_page_content(url.book_url)
 
-                if page:
+                if self.page_content:
                     # parse for the title/subtitle
-                    book.set_title(self.get_title(page))
+                    book.set_title(self.get_title())
+
+                    # parse for the author(s)
+                    book.set_authors(','.join(self.get_contributors()))
                     
                     # parse for the original publication year
-                    book.publication_year = self.get_original_publication_year(page)
+                    book.publication_year = self.get_original_publication_year()
 
                     # parse for the description
-                    book.description = self.get_description(page)
+                    book.description = self.get_description()
 
                     # parse for the genres. the get_genres method returns a list, so we convert the list into a CSV string
-                    categories = ','.join(self.get_genres(page))
+                    categories = ','.join(self.get_genres())
 
                     # use the categories data to set the genres
                     book.set_genres(categories)
@@ -52,7 +56,7 @@ class Goodreads:
                     book.set_tags(categories)
 
                     # parse for the series
-                    series = self.get_series(page)
+                    series = self.get_series()
                     
                     book.series.clear()
                     if series:
@@ -60,16 +64,16 @@ class Goodreads:
                             book.series.append(Series(name, part))
 
                     # parse for the publisher
-                    book.publisher = self.get_publisher(page)
+                    book.publisher = self.get_publisher()
 
                     # parse for the ISBN
-                    book.isbn = self.get_isbn(page)
+                    book.isbn = self.get_isbn()
 
                 return book
         except Exception as e:
             print(f"Encountered an issue fetching Goodreads metadata: {e}")
 
-    def get_book_page_content(self, book_url):
+    def set_page_content(self, book_url):
         # Book pages unfortunately do not initially load all the metadata we require.
         # Before we parse the page HTML, we must click a few buttons to load all the metadata.
         driver = self.crawler.driver
@@ -87,14 +91,14 @@ class Goodreads:
             self.crawler.click_button(xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
 
             # Use beautifulsoup to parse the HTML and return that to the caller
-            return BeautifulSoup(driver.page_source, "html.parser")
+            self.page_content = BeautifulSoup(driver.page_source, "html.parser")
         except Exception as e:
             print(f"An unexpected error occurred while getting the book page content: {e}")
 
-    def get_genres(self, page_content):
+    def get_genres(self):
         try:
             # Find the div containing the genres using the data-testid attribute
-            genres_div = page_content.find("div", {"data-testid": "genresList"})
+            genres_div = self.page_content.find("div", {"data-testid": "genresList"})
             
             if genres_div:
                 # Find all the span elements with the class "Button__labelItem" inside the genres div
@@ -115,11 +119,25 @@ class Goodreads:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_original_publication_year(self, page_content):
+    def get_contributors(self):
+        try:
+            contributor_div = self.page_content.find("div", class_="ContributorLinksList")
+            if contributor_div:
+                name_spans = contributor_div.find_all("span", {"data-testid": "name"})
+                if name_spans:
+                    names = []
+                    for name in name_spans:
+                        names.append(name.get_text(strip=True))
+                    return names
+
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+    def get_original_publication_year(self):
         pattern = r'\b\d{4}\b'
         
         try:
-            pub_date_div = page_content.find("div", class_="BookDetails")
+            pub_date_div = self.page_content.find("div", class_="BookDetails")
 
             if pub_date_div:
                 pub_date = pub_date_div.find("p", {"data-testid": "publicationInfo"})
@@ -135,9 +153,9 @@ class Goodreads:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_title(self, page_content):
+    def get_title(self):
         try:
-            title_div = page_content.find("div", class_="BookPageTitleSection__title")
+            title_div = self.page_content.find("div", class_="BookPageTitleSection__title")
             if title_div:
                 title = title_div.find("h1", {"data-testid": "bookTitle"})
                 if title:
@@ -145,9 +163,9 @@ class Goodreads:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 
-    def get_description(self, page_content):
+    def get_description(self):
         try:
-            descr_div = page_content.find("div", {"data-testid": "description"})
+            descr_div = self.page_content.find("div", {"data-testid": "description"})
 
             if descr_div:
                 descr_span = descr_div.find("span", class_="Formatted")
@@ -156,11 +174,11 @@ class Goodreads:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")    
 
-    def get_series(self, page_content):
+    def get_series(self):
         series_dict = {}
 
         try:
-            div = self.get_div_by_dt(page_content, "Series")
+            div = self.get_div_by_dt("Series")
             
             if div:
                 # Iterate through all the "a" tags, parsing out the tag text and the number associated with it
@@ -177,9 +195,9 @@ class Goodreads:
         except Exception as e:
             print(f"An unexpected error occurred: {e}")          
 
-    def get_div_by_dt(self, page_content, label):
+    def get_div_by_dt(self, label):
         try:
-            book_details = page_content.find("div", {"class": "BookDetails"})
+            book_details = self.page_content.find("div", {"class": "BookDetails"})
 
             # Search for divs within Book Details with the class DescListItem.
             # There are several of these, so use the label of the data section as a filter
@@ -192,9 +210,9 @@ class Goodreads:
         except Exception as e:
             print(f"Could not find {label} on the page")  
 
-    def get_publisher(self, page_content):
+    def get_publisher(self):
         try:
-            div = self.get_div_by_dt(page_content, "Published").find("div", {"data-testid": "contentContainer"})
+            div = self.get_div_by_dt("Published").find("div", {"data-testid": "contentContainer"})
             if div and "by" in div.next_element:
                 return div.next_element.split("by")[-1].strip()
             else:
@@ -202,9 +220,9 @@ class Goodreads:
         except Exception as e:
             print(f"There is no publisher attribute on this page")    
 
-    def get_isbn(self, page_content):
+    def get_isbn(self):
         try:
-            div = self.get_div_by_dt(page_content, "ISBN").find("div", {"data-testid": "contentContainer"})
+            div = self.get_div_by_dt("ISBN").find("div", {"data-testid": "contentContainer"})
             if div:
                 isbn = div.next_element.strip(' ')
                 return isbn

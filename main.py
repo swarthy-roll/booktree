@@ -17,7 +17,7 @@ def main():
     #config = Config.Config()
     #print(config)
 
-    isbn = '9780441017027'
+    isbn = '9781546434610'
     goodreads = Goodreads()
     book = goodreads.fetch_all(Book(2),isbn=isbn)
     #book = Book(1)
