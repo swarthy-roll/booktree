@@ -4,6 +4,8 @@ import database.table as Table
 import utils.scanner as Scanner
 import utils.config as Config
 import logging
+from entities.book import Book
+from utils.goodreads import Goodreads
 
 
 def main():
@@ -12,9 +14,15 @@ def main():
     #logger = logging.getLogger('peewee')
     #logger.addHandler(logging.StreamHandler())
     #logger.setLevel(logging.DEBUG)
-    config = Config.Config()
-    print(config)
+    #config = Config.Config()
+    #print(config)
 
+    isbn = '9780441017027'
+    goodreads = Goodreads()
+    book = goodreads.fetch_all(Book(2),isbn=isbn)
+    #book = Book(1)
+    #book.set_title("Testing: part 1")
+    print(book)
     #directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
     #directory_scanner.start()
 

@@ -1,28 +1,31 @@
 import re, time, random
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
-import utils.search as search
-import utils.agent as agent
-import entities.series as Series
+from utils.search import Search
+from utils.agent import Agent
+from entities.series import Series
+from entities.book import Book
 
 @dataclass
 class Goodreads:
-    crawler: agent.Agent
+    crawler: Agent
     genre_limit: int = 2
     xpath_close: str = "//button[@aria-label='Close']"
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
     xpath_book_details: str = "//button[@aria-label='Book details and editions']"
     
     def __init__(self):
-        self.crawler=agent.Agent(headless=True)
+        self.crawler=Agent(headless=True)
 
-    def fetch_all(self, book, isbn="", title="", author=""):
+    def fetch_all(self, book:Book, isbn="", title="", author=""):
         try:
             # bot detection mitigation effort...
-            time.sleep(random.randint(30, 56))
+            # if ISBN is known, the Goodreads page can be accessed directly, so there's no need to avoid Google bot detection
+            if not isbn:
+                time.sleep(random.randint(30, 56))
             
             # instantiate our search class and search for the book url
-            url = search.Search()
+            url = Search()
             url.search(self.crawler.driver, isbn, title, author)
 
             if url.book_url:
@@ -30,6 +33,9 @@ class Goodreads:
                 page = self.get_book_page_content(url.book_url)
 
                 if page:
+                    # parse for the title/subtitle
+                    book.set_title(self.get_title(page))
+                    
                     # parse for the original publication year
                     book.publication_year = self.get_original_publication_year(page)
 
@@ -61,7 +67,7 @@ class Goodreads:
 
                 return book
         except Exception as e:
-            print("Encountered an issue fetching Goodreads metadata")
+            print(f"Encountered an issue fetching Goodreads metadata: {e}")
 
     def get_book_page_content(self, book_url):
         # Book pages unfortunately do not initially load all the metadata we require.
@@ -126,6 +132,16 @@ class Goodreads:
                 #findall returns an array even though in this case there's one result. access the first/only result using [0]
                 return year[0] 
             
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+    def get_title(self, page_content):
+        try:
+            title_div = page_content.find("div", class_="BookPageTitleSection__title")
+            if title_div:
+                title = title_div.find("h1", {"data-testid": "bookTitle"})
+                if title:
+                    return title.get_text(strip=True)
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 

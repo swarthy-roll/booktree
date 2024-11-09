@@ -33,8 +33,9 @@ class Search:
             self.set_engine(isbn, title, author)
             self.set_base_url()
             if self.engine == "goodreads" and re.findall(self.isbn13_pattern,isbn):
-                # if the engine is goodreads and the search string is ISBN, return the base URL + ISBN
-                return f"{self.base_url}{isbn}"
+                # if the engine is goodreads and the search string is ISBN, set the book URL (URL + ISBN) and return
+                self.book_url = f"{self.base_url}{isbn}"
+                return
             elif self.engine == "google":
                 search_url = f"{self.base_url}{self.google_site_prefix} www.goodreads.com {title} {author}"
             else:

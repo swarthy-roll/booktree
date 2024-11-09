@@ -64,6 +64,7 @@ class Book:
                 f"series:            {self.series}\n"
                 f"genres:            {self.genres}\n"
                 f"tags:              {self.tags}\n"
+                f"isbn:              {self.isbn}\n"
                 f"source:            {self.source}\n"
             )
 
@@ -119,6 +120,16 @@ class Book:
             
         return self.getList(seriesparts, delimiter, encloser, stripaccents=True) 
     
+    def set_title(self, title_text: str):
+        if title_text:
+            # sometimes, the title text will contain the subtitle, delimited by a semicolon. this parses the text into three parts and sets the title/subtitle accordingly
+            title, _, subtitle = title_text.partition(":")
+            self.title = title.strip()
+            self.set_subtitle(subtitle.strip() if subtitle else None)
+
+    def set_subtitle(self, subtitle):
+        self.subtitle = subtitle
+
     def set_authors(self, authors:str):
         #Given a csv of authors, convert it to a list
         if len(authors.strip()):
