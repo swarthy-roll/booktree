@@ -43,6 +43,9 @@ class Goodreads:
                     # parse for the original publication year
                     book.publication_year = self.get_original_publication_year()
 
+                    # parse for the book cover url
+                    book.book_cover_url = self.get_book_cover()
+
                     # parse for the description
                     book.description = self.get_description()
 
@@ -150,6 +153,16 @@ class Goodreads:
                 #findall returns an array even though in this case there's one result. access the first/only result using [0]
                 return year[0] 
             
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
+    def get_book_cover(self):
+        try:
+            cover_div = self.page_content.find("div", class_="BookCover__image")
+            if cover_div:
+                cover = cover_div.find("img", class_="ResponsiveImage")
+                if cover:
+                    return cover.get('src')
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
 

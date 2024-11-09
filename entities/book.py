@@ -43,6 +43,7 @@ class Book:
     genres:list[Category_Entity]= field(default_factory=list)
     tags:list[Category_Entity]= field(default_factory=list)
     files:list[str]= field(default_factory=list)
+    book_cover_url:str=""
     source:Source=0
 
     def __init__(self, source:Source):
@@ -66,6 +67,7 @@ class Book:
                 f"genres:            {self.genres}\n"
                 f"tags:              {self.tags}\n"
                 f"isbn:              {self.isbn}\n"
+                f"book cover url:    {self.book_cover_url}\n"
                 f"source:            {self.source}\n"
             )
 
