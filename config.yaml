@@ -1,12 +1,25 @@
+# at least one file type must be true in order to process files.
 file_types_to_process:
-  - epub
-  - pdf
+  epub: true
+  pdf: false
+
+# this is the source directory where all the files to be processed reside.
 source_directory: C:\Users\Aaron\Documents\ebooks
+
+# this is the directory where hardlinked or copied files will be sent to.
 target_directory: C:\Users\Aaron\Documents\target
+
+# determines whether an opf file is generated for each processed file. recommended setting is true.
 create_opf_files: true
+
+# verbose determines how much detail is printed in the log. "true" means more will be printed than normal. useful for troubleshooting.
 verbose: true
+
+# the available options from which to fetch metadata. goodreads is only an available option for ebooks.
 fetch_metadata_from:
-  - goodreads
-  - audible
-  - mam
+  goodreads: true
+  audible: true
+  mam: true
+
+# when scraping goodreads, this option determines whether the browser (scraper) runs in the background ("true") or if it's visible ("false"). "true" is recommended.
 headless_mode: true

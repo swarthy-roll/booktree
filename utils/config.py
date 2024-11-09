@@ -8,7 +8,7 @@ class Config:
     target_directory:str
     create_opf_files:bool
     verbose:bool
-    fetch_metadata_from:list
+    fetch_metadata_from:dict
     headless_mode:bool
 
     def __init__(self):
@@ -36,8 +36,9 @@ class Config:
         )
 
     def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose, fetch_metadata_from, headless_mode):
-        self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process] # append the wildcards to each file type for proper extension identification
-        self.file_types = file_types_to_process
+        # append the wildcards to each file type for proper extension identification
+        self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process if file_types_to_process[item]] 
+        self.file_types = [item for item in file_types_to_process if file_types_to_process[item]]
         self.source_directory = source_directory
         self.target_directory = target_directory
         self.create_opf_files = create_opf_files

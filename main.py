@@ -15,14 +15,14 @@ def main():
     #logger.addHandler(logging.StreamHandler())
     #logger.setLevel(logging.DEBUG)
     config = Config.Config()
-    #print(config)
+    print(config)
 
-    isbn = '9781546434610'
-    goodreads = Goodreads(headless=config.headless_mode)
-    book = goodreads.fetch_all(Book(2),isbn=isbn)
+    #isbn = '9781546434610'
+    #goodreads = Goodreads(headless=config.headless_mode)
+    #book = goodreads.fetch_all(Book(2),isbn=isbn)
     #book = Book(1)
     #book.set_title("Testing: part 1")
-    print(book)
+    #print(book)
     #directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
     #directory_scanner.start()
 

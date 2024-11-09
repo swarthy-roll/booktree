@@ -3,8 +3,11 @@ import os, subprocess, re, json, hashlib
 from ebooklib import epub
 from peewee import IntegrityError
 from pathvalidate import sanitize_filename
-from utils import utils, config as Config, goodreads as Goodreads
-import entities.book as Book, entities.series as Series, entities.contributor as Contributor
+from utils import utils
+from utils.config import Config
+from utils.goodreads import Goodreads
+from entities.book import Book
+import entities.series as Series, entities.contributor as Contributor
 from model.file import File as File_Model
 from model.book_file import Book_File as Book_File_Model
 
@@ -19,10 +22,10 @@ class File:
     is_matched:bool = False
     is_hardlinked:bool = False
     probe_results:str = ""
-    book:list[Book.Book] = field(default_factory=list)
-    config:Config.Config = None
+    book:list[Book] = field(default_factory=list)
+    config:Config = None
 
-    def __init__(self, full_path:str, config:Config.Config):
+    def __init__(self, full_path:str, config:Config):
         self.book = []
         self.config = config
         self.set_full_path(full_path)
@@ -127,17 +130,18 @@ class File:
         return os.path.basename(self.full_path)
 
     def fetch_metadata(self):
-        if (self.book[0].authors and self.book[0].title) or self.book[0].isbn:
-            for source in self.config.fetch_metadata_from:
-                match source, self.extension:
-                    case "goodreads", 'epub':
-                        print("goodreads")
-                        goodreads = Goodreads.Goodreads()
-                        goodreads.fetch_all(Book.Book(source = 2),title=self.book[0].title,author=self.book[0].get_authors())
-                    case "audible":
-                        print("audible")
-                    case "mam":
-                        print("mam")
+        for source in self.config.fetch_metadata_from:
+            match source, self.extension:
+                case "goodreads", 'epub':
+                    goodreads = Goodreads(headless=self.config.headless_mode)
+                    book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors())
+                    if book: 
+                        self.is_matched = True
+                        self.book.append(book)
+                case "audible", 'm4b':
+                    print("audible")
+                case "mam", 'epub':
+                    print("mam")
 
     def __probe_file__ (self):
         cmnd = ['ffprobe','-loglevel','error','-show_entries','format_tags:format=duration', '-of', 'default=noprint_wrappers=1:nokey=0', '-print_format', 'json', self.full_path]
@@ -157,8 +161,8 @@ class File:
                 mapping = self._metadata_mapping()
                 genres = metadata.get(mapping.get("genres"), None)
                 tags = metadata.get(mapping.get("tags"), None)
-                book = Book.Book(source = 1)
-                book.title = metadata.get(mapping.get("title"), None)
+                book = Book(source = 1)
+                book.title = metadata.get(mapping.get("title"), self.file_name)
                 book.subtitle = metadata.get(mapping.get("subtitle"), None)
                 book.set_authors(metadata.get(mapping.get("authors"), None))
                 book.publisher = metadata.get(mapping.get("publisher"), None)
@@ -170,7 +174,7 @@ class File:
                 book.set_series(metadata.get(mapping.get("series"), None))
                 book.set_isbn(metadata.get(mapping.get("isbn"), None))
 
-                print(book)
+                #print(book)
                 self.book.append(book)
         except Exception as e:
             print(f"ERROR: could not create book object for {self.file_name}: {e}")
@@ -226,7 +230,7 @@ class File:
             metadata=dict()
 
         #parse and create a book object
-        book=Book.Book()
+        book=Book()
         if 'AUDIBLE_ASIN' in metadata: book.asin=metadata["AUDIBLE_ASIN"]
         if 'title' in metadata: book.title=metadata["title"]
         if 'subtitle' in metadata: book.subtitle=metadata["subtitle"]
@@ -343,7 +347,7 @@ class File:
     def getTargetPaths(self, book, cfg):
         return self.getConfigTargetPath(cfg, book)
     
-    def getLogRecord(self, bookMatch:Book.Book, cfg):
+    def getLogRecord(self, bookMatch:Book, cfg):
         #returns a dictionary of the record that gets logged
         book={
             "file":self.full_path,

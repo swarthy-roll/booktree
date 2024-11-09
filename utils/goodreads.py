@@ -75,6 +75,7 @@ class Goodreads:
                 return book
         except Exception as e:
             print(f"Encountered an issue fetching Goodreads metadata: {e}")
+            return None
 
     def set_page_content(self, book_url):
         # Book pages unfortunately do not initially load all the metadata we require.
