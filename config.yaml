@@ -19,7 +19,7 @@ fetch_metadata_from:
   mam: false
 
 # when scraping goodreads, this option determines whether the browser (scraper) runs in the background ("true") or if it's visible ("false"). "true" is recommended.
-headless_mode: true
+headless_mode: false
 
 # when generating OPF files, metadata will be generated from sources in order of the preference specified here. 
 # note that for a source to be valid, it must be enabled in the fetch_metadata_from setting.

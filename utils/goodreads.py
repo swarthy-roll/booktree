@@ -1,15 +1,17 @@
-import re, time, random
+import re, time, random, traceback
 from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from utils.search import Search
 from utils.agent import Agent
 from entities.series import Series
 from entities.book import Book
+from entities.logger import Logger
 
 @dataclass
 class Goodreads:
     crawler: Agent
     page_content: BeautifulSoup
+    logger:Logger
     genre_limit: int = 2
     xpath_close: str = "//button[@aria-label='Close']"
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
@@ -17,19 +19,24 @@ class Goodreads:
     
     def __init__(self, headless:bool):
         self.crawler = Agent(headless=headless)
+        self.logger = Logger()
 
     def fetch_all(self, book:Book, isbn="", title="", author=""):
         try:
             # bot detection mitigation effort...
             # if ISBN is known, the Goodreads page can be accessed directly, so there's no need to avoid Google bot detection
             if not isbn:
-                time.sleep(random.randint(30, 56))
+                wait = random.randint(30, 56)
+                self.logger.log('INFO',f'Execution paused for {wait} seconds as a bot detection mitigation effort...')
+                time.sleep(wait)
             
             # instantiate our search class and search for the book url
             url = Search()
             url.search(self.crawler.driver, isbn, title, author)
 
             if url.book_url:
+                self.logger.log('DEBUG',f'Goodreads book URL: {url.book_url}')
+                
                 # set the HTML for the book page
                 self.set_page_content(url.book_url)
 
@@ -73,8 +80,8 @@ class Goodreads:
                     book.isbn = self.get_isbn()
 
                 return book
-        except Exception as e:
-            print(f"Encountered an issue fetching Goodreads metadata: {e}")
+        except Exception:
+            self.logger.log('ERROR',f'Encountered an issue fetching Goodreads metadata: {traceback.format_exc()}')
             return None
 
     def set_page_content(self, book_url):
