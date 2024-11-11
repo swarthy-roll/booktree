@@ -1,4 +1,12 @@
 import yaml
+from enum import Enum
+
+class Level(Enum):
+    CRITICAL = 50
+    ERROR = 40
+    WARNING = 30
+    INFO = 20
+    DEBUG = 10
 
 class Config:
     config_file:str='config.yaml'
@@ -11,6 +19,7 @@ class Config:
     fetch_metadata_from:dict
     headless_mode:bool
     metadata_preference:list
+    log_level:Level
 
     def __init__(self):
         with open(self.config_file, "r") as file:
@@ -36,7 +45,7 @@ class Config:
             f")"
         )
 
-    def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose, fetch_metadata_from, headless_mode, metadata_preference):
+    def load_config(self, file_types_to_process, source_directory, target_directory, create_opf_files, verbose, fetch_metadata_from, headless_mode, metadata_preference, log_level):
         # append the wildcards to each file type for proper extension identification
         self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process if file_types_to_process[item]] 
         self.file_types = [item for item in file_types_to_process if file_types_to_process[item]]
@@ -47,3 +56,4 @@ class Config:
         self.fetch_metadata_from = [item for item in fetch_metadata_from if fetch_metadata_from[item]]
         self.headless_mode = headless_mode
         self.metadata_preference = metadata_preference
+        self.log_level = log_level

@@ -31,3 +31,12 @@ metadata_preference:
   - mam
   - file_metadata
   - audible
+
+# sets the level of logging. the available levels (from fewest messages to most messages) are: CRITICAL, ERROR, WARNING, INFO, DEBUG:
+#   - CRITICAL: This level indicates a serious error, often meaning the application may not be able to continue running.
+#   - ERROR: Used for errors that prevent part of the program from functioning but might not halt the entire application.
+#   - WARNING: Warnings are for potentially problematic situations that don’t prevent the application from running but may require attention.
+#   - INFO: Informational messages that highlight the progress of the application at a coarse-grained level.
+#   - DEBUG: Detailed information for diagnosing problems, typically used during development.
+# the recommended level for normal operation is ERROR or WARNING so that only important messages are shown. set to INFO to see progress details.
+log_level: DEBUG
