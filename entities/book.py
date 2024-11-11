@@ -34,7 +34,7 @@ class Book:
     length:int=0
     duration:float=0
     match_rate:int=0
-    language:str="English"
+    language:str="en"
     snatched:bool=False
     description:str=""
     series:list[Series_Entity]= field(default_factory=list)
@@ -85,9 +85,16 @@ class Book:
         
         return title
     
-    def get_authors(self, delimiter=",", encloser="", stripaccents=True):
+    def get_authors(self, delimiter=",", cleanse=False):
+        # returns a delimited list of authors
         if len(self.authors):
-            return self.getList(self.authors, delimiter, encloser, stripaccents=True)
+            if cleanse:
+                return delimiter.join(self.sanitize_authors())
+            else:
+                authors = []
+                for author in self.authors:
+                    authors.append(author.name)
+                return delimiter.join(authors)
         else:
             return ""
     
@@ -315,18 +322,22 @@ class Book:
 
         return
 
+    def sanitize_authors(self):
+        # takes any authors in the instance and sanitizes the text. 
+        if len(self.authors):
+            authors = []
+            for author in self.authors:
+                #remove some characters we don't want on the author name
+                stdAuthor=utils.strip_accents(author.name)
 
-    def cleanseAuthor(author):
-        #remove some characters we don't want on the author name
-        stdAuthor=utils.strip_accents(author)
+                #remove some characters we don't want on the author name
+                for c in ["- editor", "- contributor", " - ", "'"]:
+                    stdAuthor=stdAuthor.replace(c,"")
 
-        #remove some characters we don't want on the author name
-        for c in ["- editor", "- contributor", " - ", "'"]:
-            stdAuthor=stdAuthor.replace(c,"")
-
-        #replace . with space, and then make sure that there's only single space between words)
-        stdAuthor=" ".join(stdAuthor.replace("."," ").split())
-        return stdAuthor
+                #replace . with space, and then make sure that there's only single space between words)
+                stdAuthor=" ".join(stdAuthor.replace("."," ").split())
+                authors.append(stdAuthor)
+            return authors
 
     def cleanseTitle(title="", stripaccents=True, stripUnabridged=False):
         #remove (Unabridged) and strip accents
@@ -433,16 +444,16 @@ class Book:
 
         return match
 
-    def getList(self, items, delimiter=",", encloser="", stripaccents=True):
+    def getList(self, items, delimiter=","):
         enclosedItems=[]
         for item in items:
             if type(item) == Contributor_Entity:
-                enclosedItems.append(f"{encloser}{self.cleanseAuthor(item.name)}{encloser}")
+                enclosedItems.append(self.cleanseAuthor(item.name))
             else:
                 if type(item) == Series_Entity:
-                    enclosedItems.append(f"{encloser}{self.cleanseSeries(item.name)}{encloser}")
+                    enclosedItems.append(self.cleanseSeries(item.name))
                 else:
-                    enclosedItems.append(f"{encloser}{item.name}{encloser}")
+                    enclosedItems.append(item.name)
 
         return delimiter.join(enclosedItems)
         

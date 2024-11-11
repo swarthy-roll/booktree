@@ -34,7 +34,7 @@ class File:
         self.set_extension()
         self.set_fingerprint()
         self.probe_file()
-        #start webscraper
+        self.fetch_metadata()
 
     def __str__(self):
         return (
@@ -134,7 +134,7 @@ class File:
             match source, self.extension:
                 case "goodreads", 'epub':
                     goodreads = Goodreads(headless=self.config.headless_mode)
-                    book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors())
+                    book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors(' '))
                     if book: 
                         self.is_matched = True
                         self.book.append(book)

@@ -6,4 +6,4 @@ class Series(Base_Model):
     name = CharField(unique=True)
     part = CharField()
     separator = CharField()
-    timestamp = DateTimeField(default = datetime.now())
+    timestamp = DateTimeField(default = datetime.now)

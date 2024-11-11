@@ -22,9 +22,9 @@ def main():
     #book = goodreads.fetch_all(Book(2),isbn=isbn)
     #book = Book(1)
     #book.set_title("Testing: part 1")
-    #print(book)
-    #directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
-    #directory_scanner.start()
+    #print(book.get_authors(' '))
+    directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
+    directory_scanner.start()
 
     # iterate over every file
 

@@ -18,4 +18,4 @@ class Book(bm.Base_Model):
     description = TextField(null=True)
     book_cover_url = CharField(null=True)
     source = IntegerField()
-    timestamp = DateTimeField(default = datetime.now())
+    timestamp = DateTimeField(default = datetime.now)

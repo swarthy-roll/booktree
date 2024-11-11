@@ -15,11 +15,19 @@ create_opf_files: true
 # verbose determines how much detail is printed in the log. "true" means more will be printed than normal. useful for troubleshooting.
 verbose: true
 
-# the available options from which to fetch metadata. goodreads is only an available option for ebooks.
+# the available options from which to fetch metadata. goodreads is only an available option for ebooks. all valid files are probed for any existing metadata.
 fetch_metadata_from:
   goodreads: true
-  audible: true
-  mam: true
+  audible: false
+  mam: false
 
 # when scraping goodreads, this option determines whether the browser (scraper) runs in the background ("true") or if it's visible ("false"). "true" is recommended.
 headless_mode: true
+
+# when generating OPF files, metadata will be generated from sources in order of the preference specified here. 
+# note that for a source to be valid, it must be enabled in the fetch_metadata_from setting.
+metadata_preference:
+  - goodreads
+  - mam
+  - file_metadata
+  - audible

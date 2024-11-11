@@ -12,4 +12,4 @@ class File(bm.Base_Model):
     is_matched = BooleanField(default=False)
     is_hardlinked = BooleanField(default=False)
     probe_results = TextField(null=True)
-    timestamp = DateTimeField(default = datetime.now())
+    timestamp = DateTimeField(default = datetime.now)
