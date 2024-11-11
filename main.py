@@ -6,6 +6,7 @@ import utils.config as Config
 import logging
 from entities.book import Book
 from utils.goodreads import Goodreads
+from entities.logger import Logger
 
 
 def main():
@@ -17,14 +18,17 @@ def main():
     config = Config.Config()
     print(config)
 
+    logger = Logger(log_to_console=True, log_to_db=True, log_level=config.log_level.name)
+    logger.log('DEBUG','This is a test log.')
+
     #isbn = '9781546434610'
     #goodreads = Goodreads(headless=config.headless_mode)
     #book = goodreads.fetch_all(Book(2),isbn=isbn)
     #book = Book(1)
     #book.set_title("Testing: part 1")
     #print(book.get_authors(' '))
-    directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
-    directory_scanner.start()
+    #directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config)
+    #directory_scanner.start()
 
     # iterate over every file
 
@@ -46,7 +50,7 @@ def main():
 
 if __name__ == '__main__':
     # TODO: add logic to delete tables when in dev mode
-    Table.drop_all_tables()
+    #Table.drop_all_tables()
     Table.create_tables()
 
     main()

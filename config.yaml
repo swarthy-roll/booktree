@@ -12,9 +12,6 @@ target_directory: C:\Users\Aaron\Documents\target
 # determines whether an opf file is generated for each processed file. recommended setting is true.
 create_opf_files: true
 
-# verbose determines how much detail is printed in the log. "true" means more will be printed than normal. useful for troubleshooting.
-verbose: true
-
 # the available options from which to fetch metadata. goodreads is only an available option for ebooks. all valid files are probed for any existing metadata.
 fetch_metadata_from:
   goodreads: true
