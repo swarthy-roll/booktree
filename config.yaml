@@ -37,3 +37,8 @@ metadata_preference:
 #   - DEBUG: Detailed information for diagnosing problems, typically used during development.
 # the recommended level for normal operation is ERROR or WARNING so that only important messages are shown. set to INFO to see progress details.
 log_level: DEBUG
+
+# when TRUE, forces all files to be processed, regardless of previous processing. 
+# WARNING! this option will reset the database back to its original state. there is no way to undo this action!
+# it is strongly recommended that you backup your .db file before continuing!
+force_reprocess: false

@@ -29,7 +29,7 @@ class Scanner:
             self.logger = logger
 
         def dispatch(self, event):
-            Scanner.logger.log('DEBUG', f'Dispatched event type: {event.event_type}, Path: {event.src_path}')
+            self.logger.log('DEBUG', f'Dispatched event type: {event.event_type}, Path: {event.src_path}')
             #Scanner.logger.log('DEBUG', f'Dispatched event type: {event.event_type}, Path: {event.src_path}')
             super().dispatch(event)
 
@@ -40,7 +40,7 @@ class Scanner:
             if not event.is_directory and extension in config.file_types:
                 time.sleep(.01) #wait for the file to be released by the system. copy/paste files creates a "file locked" issue which generates a permission denied error when reading the file briefly after creation
                 self.file_queue.put(event.src_path)
-                Scanner.logger.log('DEBUG', f'New file detected: {event.src_path}. Queue size now approx: {self.file_queue.qsize()}')
+                self.logger.log('INFO', f'New file detected: {event.src_path}. Queue size now approx: {self.file_queue.qsize()}')
 
     def start(self):
         # use separate threads for file processing, initial directory scan, and directory monitoring
@@ -52,16 +52,20 @@ class Scanner:
         while True:
             file_path = self.file_queue.get()  
             try:
-                self.logger.log('INFO', f'Processing file: {file_path}...')
+                self.logger.log('INFO', f'Queuing file for processing: {file_path}...')
                 file = File(full_path=file_path, config=self.config)
-                file.save()
+                if file.exists_in_db:
+                    self.logger.log('INFO',f'Skipping file: {file_path} since it has already been processed.')
+                else:
+                    file.save()
 
                 file = None
             except Exception as e:
                 self.logger.log('WARNING', f'Error processing {file_path}: {e}.')
             finally:
                 self.file_queue.task_done()
-                self.logger.log('INFO', f'File processing for {file_path} complete. Queue size approx: {self.file_queue.qsize()}.')
+                self.logger.log('INFO', f'File processing completed for {file_path}.')
+                self.logger.log('INFO', f'Queue size approximately: {self.file_queue.qsize()}.')
 
     def scan_existing_files(self):
         self.logger.log('INFO', f'Starting initial scan of {self.scan_target}...')

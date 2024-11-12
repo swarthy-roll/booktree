@@ -1,5 +1,6 @@
 from database.database import db
 from model.base_model import Base_Model
+from peewee import IntegrityError
 
 def create_table(table_name):
     print(f"Attempting to create the {table_name} table...")
@@ -24,13 +25,14 @@ def create_table(table_name):
 def create_tables():
     try:
         model_classes = Base_Model.__subclasses__()
-
-        # todo: verbose flag
-        db.connect()
-        #for model in model_classes:
-            #print(f"Creating the {model.__name__} table...")
-        db.create_tables(model_classes)
-        db.close()
+        
+        with db.atomic() as transaction:
+            try:
+                db.create_tables(model_classes)
+            except IntegrityError:
+                print("Error occurred while attempting to create database tables.")
+                transaction.rollback()
+        
 
         print("All tables created successfully!")
     

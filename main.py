@@ -6,6 +6,7 @@ import utils.config as Config
 from entities.book import Book
 from utils.goodreads import Goodreads
 from entities.logger import Logger
+import logging
 
 
 def main():
@@ -14,18 +15,7 @@ def main():
     #logger = logging.getLogger('peewee')
     #logger.addHandler(logging.StreamHandler())
     #logger.setLevel(logging.DEBUG)
-    config = Config.Config()
-    print(config)
 
-    logger = Logger()
-    logger.log('DEBUG','Starting app...')
-
-    #isbn = '9781546434610'
-    #goodreads = Goodreads(headless=config.headless_mode)
-    #book = goodreads.fetch_all(Book(2),isbn=isbn)
-    #book = Book(1)
-    #book.set_title("Testing: part 1")
-    #print(book.get_authors(' '))
     directory_scanner = Scanner.Scanner(scan_target=config.source_directory, file_types=config.file_types_to_process, config=config, logger=logger)
     directory_scanner.start()
 
@@ -48,8 +38,16 @@ def main():
     #timer end
 
 if __name__ == '__main__':
-    # TODO: add logic to delete tables when in dev mode
-    Table.drop_all_tables()
+    config = Config.Config()
+    logger = Logger()
+    logger.log('DEBUG','Starting app...')
+    logger.log('DEBUG',f'Config: {config}')
+    #dblogger = logging.getLogger('peewee')
+    #dblogger.addHandler(logging.StreamHandler())
+    #dblogger.setLevel(logging.DEBUG)
+    
+    if config.force_reprocess:
+        Table.drop_all_tables()
     Table.create_tables()
 
     main()

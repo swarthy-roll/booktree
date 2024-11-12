@@ -23,6 +23,7 @@ class Goodreads:
         self.logger = Logger()
 
     def fetch_all(self, book:Book, isbn="", title="", author=""):
+        self.logger.log('DEBUG', f'Beginning Goodreads scrape: ISBN={isbn}, title={title}, author={author}')
         try:
             # bot detection mitigation effort...
             # if ISBN is known, the Goodreads page can be accessed directly, so there's no need to avoid Google bot detection
@@ -126,7 +127,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book page content for {self.book_url}: {traceback.format_exc()}')
 
     def get_genres(self):
-        self.logger.log('INFO', f'Scraping genres on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping genres on {self.book_url}...')
         try:
             # Find the div containing the genres using the data-testid attribute
             genres_div = self.page_content.find("div", {"data-testid": "genresList"})
@@ -144,14 +145,14 @@ class Goodreads:
                             genres.append(genre_text)
                     return genres
                 else:
-                    self.logger.log('INFO', f'No genres found within the genres section of {self.book_url}.')
+                    self.logger.log('DEBUG', f'No genres found within the genres section of {self.book_url}.')
             else:
-                self.logger.log('INFO', f'Genres section not found on {self.book_url}.')
+                self.logger.log('DEBUG', f'Genres section not found on {self.book_url}.')
         except Exception:
             self.logger.log('ERROR', f'An unexpected error occurred while getting genres: {traceback.format_exc()}')
 
     def get_contributors(self):
-        self.logger.log('INFO', f'Scraping contributors on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping contributors on {self.book_url}...')
         try:
             contributor_div = self.page_content.find("div", class_="ContributorLinksList")
             if contributor_div:
@@ -166,7 +167,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting contributors on {self.book_url}: {traceback.format_exc()}')
 
     def get_original_publication_year(self):
-        self.logger.log('INFO', f'Scraping publication year on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping publication year on {self.book_url}...')
         pattern = r'\b\d{4}\b'
         
         try:
@@ -187,7 +188,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the publication year on {self.book_url}: {traceback.format_exc()}')
 
     def get_book_cover(self):
-        self.logger.log('INFO', f'Scraping book cover URL on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping book cover URL on {self.book_url}...')
         try:
             cover_div = self.page_content.find("div", class_="BookCover__image")
             if cover_div:
@@ -198,7 +199,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book cover on {self.book_url}: {traceback.format_exc()}')
 
     def get_title(self):
-        self.logger.log('INFO', f'Scraping title on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping title on {self.book_url}...')
         try:
             title_div = self.page_content.find("div", class_="BookPageTitleSection__title")
             if title_div:
@@ -209,7 +210,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book title on {self.book_url}: {traceback.format_exc()}')
 
     def get_description(self):
-        self.logger.log('INFO', f'Scraping description on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping description on {self.book_url}...')
         try:
             descr_div = self.page_content.find("div", {"data-testid": "description"})
 
@@ -221,7 +222,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book description on {self.book_url}: {traceback.format_exc()}')
 
     def get_series(self):
-        self.logger.log('INFO', f'Scraping series details on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping series details on {self.book_url}...')
         series_dict = {}
 
         try:
@@ -258,7 +259,7 @@ class Goodreads:
             self.logger.log('ERROR', f'Could not find {label} on the page {self.book_url}: {traceback.format_exc()}')
 
     def get_publisher(self):
-        self.logger.log('INFO', f'Scraping publisher on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping publisher on {self.book_url}...')
         try:
             div = self.get_div_by_dt("Published").find("div", {"data-testid": "contentContainer"})
             if div and "by" in div.next_element:
@@ -269,7 +270,7 @@ class Goodreads:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book publisher on {self.book_url}: {traceback.format_exc()}')  
 
     def get_isbn(self):
-        self.logger.log('INFO', f'Scraping ISBN on {self.book_url}...')
+        self.logger.log('DEBUG', f'Scraping ISBN on {self.book_url}...')
         try:
             div = self.get_div_by_dt("ISBN").find("div", {"data-testid": "contentContainer"})
             if div:

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-import os, subprocess, re, json, hashlib
+import os, subprocess, re, json, hashlib, traceback
 from ebooklib import epub
 from peewee import IntegrityError
 from pathvalidate import sanitize_filename
@@ -7,6 +7,7 @@ from utils import utils
 from utils.config import Config
 from utils.goodreads import Goodreads
 from entities.book import Book
+from entities.logger import Logger
 import entities.series as Series, entities.contributor as Contributor
 from model.file import File as File_Model
 from model.book_file import Book_File as Book_File_Model
@@ -24,17 +25,23 @@ class File:
     probe_results:str = ""
     book:list[Book] = field(default_factory=list)
     config:Config = None
+    exists_in_db:bool = False
+    logger:Logger = None
 
     def __init__(self, full_path:str, config:Config):
-        self.book = []
-        self.config = config
-        self.set_full_path(full_path)
-        self.set_file_name()
-        self.set_source_path()
-        self.set_extension()
-        self.set_fingerprint()
-        self.probe_file()
-        self.fetch_metadata()
+        self.exists_in_db = File_Model.record_exists('full_path',full_path)
+        if not self.exists_in_db or config.force_reprocess:
+            self.logger = Logger()
+            self.logger.log('INFO', f'Processing file {full_path}...')
+            self.book = []
+            self.config = config
+            self.set_full_path(full_path)
+            self.set_file_name()
+            self.set_source_path()
+            self.set_extension()
+            self.set_fingerprint()
+            self.probe_file()
+            self.fetch_metadata()
 
     def __str__(self):
         return (
@@ -75,9 +82,9 @@ class File:
                 hash_func.update(chunk)
 
             return hash_func.hexdigest()
-        except Exception as e:
-            print(f"Error while generating a fingerprint for {self.full_path}: {e}")
-
+        except Exception:
+            self.logger.log('ERROR',f'Error while generating a fingerprint for {self.full_path}: {traceback.format_exc()}')
+    
     def save(self):
         # a transaction here helps in two ways. firstly, if something errors out, we don't get a partial commit. 
         # secondly, a transaction prevents any race conditions. committing everything at once allows the db to commit items in the order needed
@@ -97,8 +104,10 @@ class File:
                     for book in self.book: 
                         book = book.save()
                         Book_File_Model.get_or_create(book=book, file=file)
-            except IntegrityError as e:
-                print(f"ERROR: could not save file record: {self.__str__()}: {e}") 
+                    self.logger.log('INFO',f'File saved to the database successfully! File: {self.full_path}')
+                return created
+            except IntegrityError:
+                self.logger.log('ERROR',f'Could not save File record: {self.__str__()}: {traceback.format_exc()}') 
                 transaction.rollback()
 
     def move(self, destination):
@@ -107,8 +116,8 @@ class File:
             self.set_source_path()
             
             File_Model.update(full_path=self.full_path, source_path=self.source_path)
-        except IntegrityError as e:
-            print(f"ERROR: could not update file after move: {self.__str__()}: {e}")
+        except IntegrityError:
+            self.logger.log('ERROR',f'Could not update file after move: {self.__str__()}: {traceback.format_exc()}') 
     
     def parse_extension(self):
         return os.path.splitext(self.file_name)[1].replace(".","")
@@ -133,6 +142,7 @@ class File:
         for source in self.config.fetch_metadata_from:
             match source, self.extension:
                 case "goodreads", 'epub':
+                    self.logger.log('INFO', f'Fetching metadata from Goodreads for {self.full_path}...')
                     goodreads = Goodreads(headless=self.config.headless_mode)
                     book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors(' '))
                     if book: 
@@ -176,8 +186,8 @@ class File:
 
                 #print(book)
                 self.book.append(book)
-        except Exception as e:
-            print(f"ERROR: could not create book object for {self.file_name}: {e}")
+        except Exception:
+            self.logger.log('ERROR',f'Could not create book object for {self.file_name} using probe metadata: {traceback.format_exc()}') 
 
     def _metadata_mapping(self):
         return {
@@ -215,8 +225,8 @@ class File:
 
             return result
             
-        except Exception as e:
-            print(f"ERROR while probing the epub {self.full_path}: {e}")
+        except Exception:
+            self.logger.log('ERROR',f'An error occurred while probing {self.full_path}: {traceback.format_exc()}') 
             return None
 
     def ffprobe(self):
