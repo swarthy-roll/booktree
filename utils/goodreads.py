@@ -12,6 +12,7 @@ class Goodreads:
     crawler: Agent
     page_content: BeautifulSoup
     logger:Logger
+    book_url:str
     genre_limit: int = 2
     xpath_close: str = "//button[@aria-label='Close']"
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
@@ -33,6 +34,7 @@ class Goodreads:
             # instantiate our search class and search for the book url
             url = Search()
             url.search(self.crawler.driver, isbn, title, author)
+            self.book_url = url.book_url
 
             if url.book_url:
                 self.logger.log('DEBUG',f'Goodreads book URL: {url.book_url}')
@@ -92,21 +94,39 @@ class Goodreads:
         try:
             driver.get(book_url)
             
-            # Dismiss the sign-in modal
-            self.crawler.click_button(xpath=self.xpath_close, wait=3)
+            attempt = 0 
+            close_result = False
+            show_all_result = False
+            book_details_result = False
 
-            # Click "...more" button
-            self.crawler.click_button(xpath=self.xpath_show_all, wait=3, sleep=1)
+            # sometimes the page won't load very quickly or other shenanigans occur and cause the button clicks to misfire
+            # this goes through three retries before abandoning
+            while not show_all_result and not book_details_result and attempt < 3:
+                #if not close_result:
+                # Dismiss the sign-in modal
+                self.crawler.click_button(xpath=self.xpath_close, wait=3)
 
-            # Click "Book details & editions" button
-            self.crawler.click_button(xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
+                if not show_all_result:
+                    # Click "...more" button
+                    show_all_result = self.crawler.click_button(xpath=self.xpath_show_all, wait=3, sleep=1)
+                    
+                if not book_details_result:
+                    # Click "Book details & editions" button
+                    book_details_result = self.crawler.click_button(xpath=self.xpath_book_details, wait=3, sleep=1, scroll=True)
+
+                if show_all_result and book_details_result:
+                    break
+                
+                attempt += 1
+                self.logger.log('DEBUG', f'Attempt to click one or more buttons failed. Retry {attempt} of 3.')
 
             # Use beautifulsoup to parse the HTML and return that to the caller
             self.page_content = BeautifulSoup(driver.page_source, "html.parser")
-        except Exception as e:
-            print(f"An unexpected error occurred while getting the book page content: {e}")
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the book page content for {self.book_url}: {traceback.format_exc()}')
 
     def get_genres(self):
+        self.logger.log('INFO', f'Scraping genres on {self.book_url}...')
         try:
             # Find the div containing the genres using the data-testid attribute
             genres_div = self.page_content.find("div", {"data-testid": "genresList"})
@@ -124,13 +144,14 @@ class Goodreads:
                             genres.append(genre_text)
                     return genres
                 else:
-                    print("No genres found within the genres section.")
+                    self.logger.log('INFO', f'No genres found within the genres section of {self.book_url}.')
             else:
-                print("Genres section not found on this page.")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+                self.logger.log('INFO', f'Genres section not found on {self.book_url}.')
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting genres: {traceback.format_exc()}')
 
     def get_contributors(self):
+        self.logger.log('INFO', f'Scraping contributors on {self.book_url}...')
         try:
             contributor_div = self.page_content.find("div", class_="ContributorLinksList")
             if contributor_div:
@@ -141,10 +162,11 @@ class Goodreads:
                         names.append(name.get_text(strip=True))
                     return names
 
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting contributors on {self.book_url}: {traceback.format_exc()}')
 
     def get_original_publication_year(self):
+        self.logger.log('INFO', f'Scraping publication year on {self.book_url}...')
         pattern = r'\b\d{4}\b'
         
         try:
@@ -161,30 +183,33 @@ class Goodreads:
                 #findall returns an array even though in this case there's one result. access the first/only result using [0]
                 return year[0] 
             
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the publication year on {self.book_url}: {traceback.format_exc()}')
 
     def get_book_cover(self):
+        self.logger.log('INFO', f'Scraping book cover URL on {self.book_url}...')
         try:
             cover_div = self.page_content.find("div", class_="BookCover__image")
             if cover_div:
                 cover = cover_div.find("img", class_="ResponsiveImage")
                 if cover:
                     return cover.get('src')
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the book cover on {self.book_url}: {traceback.format_exc()}')
 
     def get_title(self):
+        self.logger.log('INFO', f'Scraping title on {self.book_url}...')
         try:
             title_div = self.page_content.find("div", class_="BookPageTitleSection__title")
             if title_div:
                 title = title_div.find("h1", {"data-testid": "bookTitle"})
                 if title:
                     return title.get_text(strip=True)
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the book title on {self.book_url}: {traceback.format_exc()}')
 
     def get_description(self):
+        self.logger.log('INFO', f'Scraping description on {self.book_url}...')
         try:
             descr_div = self.page_content.find("div", {"data-testid": "description"})
 
@@ -192,10 +217,11 @@ class Goodreads:
                 descr_span = descr_div.find("span", class_="Formatted")
                 if descr_span:
                     return descr_span.get_text("\n\n",strip=True)
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")    
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the book description on {self.book_url}: {traceback.format_exc()}')
 
     def get_series(self):
+        self.logger.log('INFO', f'Scraping series details on {self.book_url}...')
         series_dict = {}
 
         try:
@@ -213,8 +239,8 @@ class Goodreads:
                         series_dict[text] = ''
 
             return series_dict
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")          
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the series on {self.book_url}: {traceback.format_exc()}')    
 
     def get_div_by_dt(self, label):
         try:
@@ -228,25 +254,27 @@ class Goodreads:
                 if div.find_next("dt").get_text(strip=True) == label:
                     return div
 
-        except Exception as e:
-            print(f"Could not find {label} on the page")  
+        except Exception:
+            self.logger.log('ERROR', f'Could not find {label} on the page {self.book_url}: {traceback.format_exc()}')
 
     def get_publisher(self):
+        self.logger.log('INFO', f'Scraping publisher on {self.book_url}...')
         try:
             div = self.get_div_by_dt("Published").find("div", {"data-testid": "contentContainer"})
             if div and "by" in div.next_element:
                 return div.next_element.split("by")[-1].strip()
             else:
                 return ""
-        except Exception as e:
-            print(f"There is no publisher attribute on this page")    
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the book publisher on {self.book_url}: {traceback.format_exc()}')  
 
     def get_isbn(self):
+        self.logger.log('INFO', f'Scraping ISBN on {self.book_url}...')
         try:
             div = self.get_div_by_dt("ISBN").find("div", {"data-testid": "contentContainer"})
             if div:
                 isbn = div.next_element.strip(' ')
                 return isbn
             else: return ""
-        except Exception as e:
-            print(f"There is no ISBN attribute on this page")    
+        except Exception:
+            self.logger.log('ERROR', f'An unexpected error occurred while getting the ISBN on {self.book_url}: {traceback.format_exc()}') 

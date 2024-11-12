@@ -9,10 +9,8 @@ class Logger:
 
     def __new__(cls, *args, **kwargs):
         if not cls._logger:
-            # Only create a logger instance if one doesn't exist
             cls._logger = logging.getLogger("MessageLogger")
             cls._instance = super(Logger, cls).__new__(cls)
-            #cls._logger.setLevel(logging.INFO)
             cls._setup_logger(cls._logger, *args, **kwargs)
         return cls._instance
     

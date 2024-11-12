@@ -3,7 +3,6 @@ import database.table as Table
 #import utils.file as file
 import utils.scanner as Scanner
 import utils.config as Config
-import logging
 from entities.book import Book
 from utils.goodreads import Goodreads
 from entities.logger import Logger

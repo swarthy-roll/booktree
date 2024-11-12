@@ -44,8 +44,8 @@ class Scanner:
 
     def start(self):
         # use separate threads for file processing, initial directory scan, and directory monitoring
-        threading.Thread(target=self.process_files, daemon=True).start()
-        threading.Thread(target=self.scan_existing_files).start()
+        threading.Thread(target=self.process_files, daemon=True, name='FileProcessingThread').start()
+        threading.Thread(target=self.scan_existing_files, name='InitialDirectoryScanThread').start()
         self.monitor_directory()
 
     def process_files(self):
