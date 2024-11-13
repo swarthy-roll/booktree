@@ -13,7 +13,7 @@ class Book(bm.Base_Model):
     length = IntegerField(default=0)
     duration = FloatField(default=0.0)
     match_rate = FloatField(default=0.0)
-    language = CharField(default="English")
+    language = CharField(null=True)
     snatched = BooleanField(default=False)
     description = TextField(null=True)
     book_cover_url = CharField(null=True)

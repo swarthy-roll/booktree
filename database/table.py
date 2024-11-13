@@ -40,20 +40,28 @@ def create_tables():
         print(f"ERROR: Error creating database tables: {e}")
 
 def drop_all_tables():
-    try:
-        db.connect()
 
-        db.pragma('foreign_keys', 0) #turn off foreign keys temporarily so we can drop tables without foreign key constraint errors
-        cursor = db.execute_sql("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = [row[0] for row in cursor.fetchall()]
-
-        for table in tables:
-            print(f"Dropping the {table} table...")
-            db.execute_sql(f"DROP TABLE IF EXISTS {table};")
-
-        db.pragma('foreign_keys', 1) #turn foreign keys back on
-        db.close()
-        print("All tables dropped successfully.")
+    # turn off foreign keys temporarily so we can drop tables without foreign key constraint errors
+    # the pragma command is not transactional, so it must be executed outside of an atomic transaction
+    db.pragma('foreign_keys', 0)
     
-    except Exception as e:
-        print(f"ERROR: Failed to drop tables: {e}")
+    with db.atomic() as transaction:
+        try:
+            cursor = db.execute_sql("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [row[0] for row in cursor.fetchall()]
+
+            for table in tables:
+                print(f"Dropping the {table} table...")
+                db.execute_sql(f"DROP TABLE IF EXISTS {table};")
+            
+            print("All tables dropped successfully.")
+
+        except IntegrityError as e:
+            print(f"ERROR: Failed to drop tables: {e}")
+            transaction.rollback()
+
+    #turn foreign keys back on
+    db.pragma('foreign_keys', 1)
+        
+    
+    

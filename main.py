@@ -39,16 +39,16 @@ def main():
 
 if __name__ == '__main__':
     config = Config.Config()
+    if config.force_reprocess:
+        Table.drop_all_tables()
+    Table.create_tables()
+    
     logger = Logger()
     logger.log('DEBUG','Starting app...')
     logger.log('DEBUG',f'Config: {config}')
     #dblogger = logging.getLogger('peewee')
     #dblogger.addHandler(logging.StreamHandler())
     #dblogger.setLevel(logging.DEBUG)
-    
-    if config.force_reprocess:
-        Table.drop_all_tables()
-    Table.create_tables()
 
     main()
 

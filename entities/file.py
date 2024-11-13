@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import os, subprocess, re, json, hashlib, traceback
 from ebooklib import epub
+from pypdf import PdfReader
 from peewee import IntegrityError
 from pathvalidate import sanitize_filename
 from utils import utils
@@ -141,7 +142,7 @@ class File:
     def fetch_metadata(self):
         for source in self.config.fetch_metadata_from:
             match source, self.extension:
-                case "goodreads", 'epub':
+                case "goodreads", 'epub' | 'pdf':
                     self.logger.log('INFO', f'Fetching metadata from Goodreads for {self.full_path}...')
                     goodreads = Goodreads(headless=self.config.headless_mode)
                     book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors(' '))
@@ -165,7 +166,7 @@ class File:
             case "epub":
                 metadata = self._probe_epub()
             case "pdf":
-                metadata = None
+                metadata = self._probe_pdf()
         try:
             if metadata:
                 mapping = self._metadata_mapping()
@@ -203,8 +204,50 @@ class File:
                          "series": "calibre:series",
                          "isbn": "identifier"
                          }
-                ,"pdf": {"title": "title", "subtitle": "subtitle"}
+                ,"pdf": {"title": "title",
+                         "authors": "authors",
+                         "genres": "genres",
+                         "publisher": "publisher",
+                         "isbn": "isbn",
+                         "description": "description",
+                         "language": "language",
+                         "publication_year": "publication_year"
+                         }
         }.get(self.extension)
+    
+    def _probe_pdf(self):
+        try:
+            genres:str = None 
+            publisher:str = None
+            language:str = None
+            description:str = None
+            publication_year:str = None
+            isbn:str = None
+            book = PdfReader(self.full_path)
+            metadata = book.metadata
+            
+            # the pypdf lib doesn't expose these fields as accessible attributes, so we access them manually if they exist
+            if book.xmp_metadata:
+                genres = ''.join(book.xmp_metadata.dc_subject) if book.xmp_metadata.dc_subject else None
+                publisher = book.xmp_metadata.dc_publisher[0] if book.xmp_metadata.dc_publisher else None
+                language = book.xmp_metadata.dc_language[0] if book.xmp_metadata.dc_language else None
+                description = book.xmp_metadata.dc_description['x-default'] if book.xmp_metadata.dc_description['x-default'] else None
+                publication_year = book.xmp_metadata.dc_date[0].year if book.xmp_metadata.dc_date else None
+                isbn = book.xmp_metadata.custom_properties.get('isbn', None)
+
+            result = {
+                "title": metadata.title,
+                "authors": metadata.author,
+                "genres": genres, # convert to a comma separated string
+                "publisher": publisher,
+                "isbn": isbn,
+                "description": description,
+                "language": language,
+                "publication_year": publication_year
+            }
+            return result
+        except Exception:
+            self.logger.log('ERROR',f'Error occurred while probing pdf {self.full_path}: {traceback.format_exc()}')
 
     def _probe_epub(self):
         attributes = {'DC': ['identifier','title','subtitle','language','contributor','coverage','creator','date','description','format','publisher','relation','rights','source','subject','type','tag']

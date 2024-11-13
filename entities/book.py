@@ -198,9 +198,10 @@ class Book:
     
     def set_isbn(self, identifier:str):
         # expects either a single isbn or a csv of identifiers that might have an isbn
-        pattern = r'^9\d{12}$'
-        items = identifier.split(',')
-        self.isbn = next((item for item in items if re.match(pattern, item)), None)
+        if identifier:
+            pattern = r'^9\d{12}$'
+            items = identifier.split(',')
+            self.isbn = next((item for item in items if re.match(pattern, item)), None)
 
     def save(self):
         with Book_Model._meta.database.atomic() as transaction:

@@ -1,7 +1,7 @@
 # at least one file type must be true in order to process files.
 file_types_to_process:
-  epub: true
-  pdf: false
+  epub: false
+  pdf: true
 
 # this is the source directory where all the files to be processed reside.
 source_directory: C:\Users\Aaron\Documents\ebooks
@@ -41,4 +41,4 @@ log_level: DEBUG
 # when TRUE, forces all files to be processed, regardless of previous processing. 
 # WARNING! this option will reset the database back to its original state. there is no way to undo this action!
 # it is strongly recommended that you backup your .db file before continuing!
-force_reprocess: false
+force_reprocess: true
