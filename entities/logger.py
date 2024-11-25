@@ -25,8 +25,8 @@ class Logger:
         logger.addHandler(db_handler)
 
         # catch all "print" or error messages and redirect them to this logger class
-        sys.stdout = StreamToLogger(logger, logging.DEBUG)
-        sys.stderr = StreamToLogger(logger, logging.ERROR)
+        #sys.stdout = StreamToLogger(logger, logging.DEBUG)
+        #sys.stderr = StreamToLogger(logger, logging.ERROR)
 
     def __init__(self, log_level=None):
         self.config = Config()
@@ -63,6 +63,7 @@ class Logger:
         elif level == "CRITICAL":
             self._logger.critical(message)
 
+"""
 class StreamToLogger:
     # redirects stdout or stderr to a logger instance.
     def __init__(self, logger, log_level):
@@ -75,13 +76,17 @@ class StreamToLogger:
 
     def flush(self):
         pass  # no flush needed for logging
+"""
 
 class DatabaseLogHandler(logging.Handler):
     def emit(self, record):
-        log_entry = Logger_Model(
-            message=self.format(record),
-            level=record.levelname,
-            name=record.name,
-            timestamp=datetime.datetime.fromtimestamp(record.created)
-        )
-        log_entry.save()  # Save the log entry to the database
+        try:
+            log_entry = Logger_Model(
+                message=self.format(record),
+                level=record.levelname,
+                name=record.name,
+                timestamp=datetime.datetime.fromtimestamp(record.created)
+            )
+            log_entry.save()  # Save the log entry to the database
+        except Exception as e:
+            print(f"ERROR: Error occurred while attempting to save log to the database: {e}")

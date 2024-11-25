@@ -29,7 +29,6 @@ class Book:
     title:str=""
     subtitle:str=""
     publication_year:str=""
-    publication_name:str=""
     publisher:str=""
     length:int=0
     duration:float=0
@@ -37,6 +36,7 @@ class Book:
     language:str="en"
     snatched:bool=False
     description:str=""
+    raw_source:str=""
     series:list[Series_Entity]= field(default_factory=list)
     authors:list[Contributor_Entity]= field(default_factory=list)
     narrators:list[Contributor_Entity]= field(default_factory=list)
@@ -98,31 +98,31 @@ class Book:
         else:
             return ""
     
-    def getSeries(self, delimiter=",", encloser="", stripaccents=True):
+    def get_series(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.series):
             return self.getList(self.series, delimiter, encloser, stripaccents=True)
         else:
             return ""
     
-    def getNarrators(self, delimiter=",", encloser="", stripaccents=True):
+    def get_narrators(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.narrators):
             return self.getList(self.narrators, delimiter, encloser, stripaccents=True) 
         else:
             return ""
         
-    def getGenres(self, delimiter=",", encloser="", stripaccents=True):
+    def get_genres(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.genres):
             return self.getList(self.genres, delimiter, encloser, stripaccents=True) 
         else:
             return ""
 
-    def getTags(self, delimiter=",", encloser="", stripaccents=True):
+    def get_tags(self, delimiter=",", encloser="", stripaccents=True):
         if len(self.tags):
             return self.getList(self.tags, delimiter, encloser, stripaccents=True) 
         else:
             return ""
     
-    def getSeriesParts(self, delimiter=",", encloser="", stripaccents=True):
+    def get_series_parts(self, delimiter=",", encloser="", stripaccents=True):
         seriesparts = []
         for s in self.series:
             if len(s.name.strip()):
@@ -211,7 +211,6 @@ class Book:
                                                         title=self.title,
                                                         subtitle=self.subtitle,
                                                         publication_year=self.publication_year,
-                                                        publication_name=self.publication_name,
                                                         publisher=self.publisher,
                                                         length=self.length,
                                                         duration=self.duration,
@@ -219,6 +218,7 @@ class Book:
                                                         language=self.language,
                                                         snatched=self.snatched,
                                                         description=self.description,
+                                                        raw_source=self.raw_source,
                                                         book_cover_url=self.book_cover_url,
                                                         source=self.source)
                 
@@ -340,23 +340,25 @@ class Book:
                 authors.append(stdAuthor)
             return authors
 
-    def cleanseTitle(title="", stripaccents=True, stripUnabridged=False):
+    def get_sanitized_title(self, strip_accents=True, remove_book_x=True, remove_subtitle=True):
         #remove (Unabridged) and strip accents
-        stdTitle=str(title)
+        clean_title:str = str(self.title)
 
-        for w in [" (Unabridged)", "m4b", "mp3", ",", "- ", "_", "epub"]:
-            stdTitle=stdTitle.replace(w," ")
+        for token in [" (Unabridged)", "m4b", "mp3", ",", "- ", "_", "epub", "|", "(", ")"]:
+            clean_title = clean_title.replace(token," ")
         
-        if stripaccents:
-            stdTitle = utils.strip_accents(stdTitle)
+        if strip_accents:
+            clean_title = utils.strip_accents(clean_title)
 
         #remove Book X
-        stdTitle = re.sub (r"\bBook(\s)?(\d)+\b", "", stdTitle, flags=re.IGNORECASE)
+        if remove_book_x:
+            clean_title = re.sub (r"\bBook(\s)?(\d)+\b", "", clean_title, flags=re.IGNORECASE)
 
         # remove any subtitle that goes after a :
-        stdTitle = re.sub (r"(:(\s)?([a-zA-Z0-9_'\.\s]{2,})*)", "", stdTitle, flags=re.IGNORECASE)
+        if remove_subtitle:
+            clean_title = re.sub (r"(:(\s)?([a-zA-Z0-9_'\.\s]{2,})*)", "", clean_title, flags=re.IGNORECASE)
 
-        return stdTitle
+        return clean_title
 
     def standardizeAuthors(self, mediaPath, dryRun=False):
         #get all authors from the source path

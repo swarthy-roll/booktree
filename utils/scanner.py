@@ -54,9 +54,10 @@ class Scanner:
             try:
                 self.logger.log('INFO', f'Queuing file for processing: {file_path}...')
                 file = File(full_path=file_path, config=self.config)
-                if file.exists_in_db:
+                if file.exists() and not self.config.force_reprocess:
                     self.logger.log('INFO',f'Skipping file: {file_path} since it has already been processed.')
                 else:
+                    file.process()
                     file.save()
 
                 file = None

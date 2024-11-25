@@ -1,5 +1,6 @@
 import yaml
 from enum import Enum
+from entities.book import Source
 
 class Log_Level(Enum):
     CRITICAL = 'CRITICAL'
@@ -13,13 +14,14 @@ class Config:
     file_types_to_process:list
     file_types:list
     source_directory:str
-    target_directory:str
+    target_directory:dict
     create_opf_files:bool
     fetch_metadata_from:dict
     headless_mode:bool
     metadata_preference:list
     log_level:Log_Level
     force_reprocess:bool
+    hardlink:bool
 
     def __init__(self):
         with open(self.config_file, "r") as file:
@@ -43,19 +45,35 @@ class Config:
             f"  headless_mode={self.headless_mode}\n"
             f"  log_level={self.log_level}\n"
             f"  force_reprocess={self.force_reprocess}\n"
+            f"  hardlink={self.hardlink}\n"
             f")"
         )
+    
+    def get_metadata_preference(self):
+        preference = []
+        for item in self.metadata_preference:
+            match item:
+                case 'goodreads':
+                    preference.append(Source.GOODREADS.value)
+                case 'audible':
+                    preference.append(Source.AUDIBLE.value)
+                case 'mam':
+                    preference.append(Source.MAM.value)
+                case 'file_metadata':
+                    preference.append(Source.EMBEDDED.value)
+        return preference
 
     def load_config(self, 
                     file_types_to_process:dict, 
                     source_directory:str, 
-                    target_directory:str, 
+                    target_directory:dict, 
                     create_opf_files:bool, 
                     fetch_metadata_from:dict, 
                     headless_mode:bool, 
                     metadata_preference:list, 
                     log_level:str,
-                    force_reprocess:bool
+                    force_reprocess:bool,
+                    hardlink:bool
                     ):
         # append the wildcards to each file type for proper extension identification
         self.file_types_to_process = [f"**/*.{item}" for item in file_types_to_process if file_types_to_process[item]] 
@@ -70,3 +88,4 @@ class Config:
             raise ValueError(f'Invalid log level: {log_level}. Must be one of the following: CRITICAL, ERROR, WARNING, INFO, DEBUG.')
         self.log_level = Log_Level(log_level.upper())
         self.force_reprocess = force_reprocess
+        self.hardlink = hardlink

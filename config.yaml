@@ -1,13 +1,16 @@
 # at least one file type must be true in order to process files.
 file_types_to_process:
-  epub: false
+  epub: true
   pdf: true
 
 # this is the source directory where all the files to be processed reside.
 source_directory: C:\Users\Aaron\Documents\ebooks
 
 # this is the directory where hardlinked or copied files will be sent to.
-target_directory: C:\Users\Aaron\Documents\target
+target_directory: 
+  base_directory: C:\Users\Aaron\Documents\target # no trailing slash
+  in_series_format: '\{author}\{series}\{series} #{part} - {title}' # begins with slash
+  no_series_format: '\{author}\{title}' # begins with slash
 
 # determines whether an opf file is generated for each processed file. recommended setting is true.
 create_opf_files: true
@@ -21,7 +24,7 @@ fetch_metadata_from:
 # when scraping goodreads, this option determines whether the browser (scraper) runs in the background ("true") or if it's visible ("false"). "true" is recommended.
 headless_mode: true
 
-# when generating OPF files, metadata will be generated from sources in order of the preference specified here. 
+# when generating OPF files or hardlinking, metadata will be generated from sources in order of the preference specified here. 
 # note that for a source to be valid, it must be enabled in the fetch_metadata_from setting.
 metadata_preference:
   - goodreads
@@ -36,9 +39,14 @@ metadata_preference:
 #   - INFO: Informational messages that highlight the progress of the application at a coarse-grained level.
 #   - DEBUG: Detailed information for diagnosing problems, typically used during development.
 # the recommended level for normal operation is ERROR or WARNING so that only important messages are shown. set to INFO to see progress details.
-log_level: DEBUG
+log_level: INFO
 
 # when TRUE, forces all files to be processed, regardless of previous processing. 
 # WARNING! this option will reset the database back to its original state. there is no way to undo this action!
 # it is strongly recommended that you backup your .db file before continuing!
 force_reprocess: true
+
+# determines whether files will be hardlinked to the target directory or not. 
+# hardlinking is like setting a shortcut to a file, where the file stays in the original location and a reference to it is placed in the target location.
+hardlink: true
+

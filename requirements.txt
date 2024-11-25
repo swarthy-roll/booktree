@@ -11,3 +11,6 @@ PyYAML==6.0.2
 EbookLib==0.18
 watchdog==5.0.3
 pypdf==5.1.0
+pytest==8.3.3 
+pytest-mock==3.14.0
+pytest-selenium==4.1.0

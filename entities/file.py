@@ -9,6 +9,7 @@ from utils.config import Config
 from utils.goodreads import Goodreads
 from entities.book import Book
 from entities.logger import Logger
+from entities.contributor import Contributor
 import entities.series as Series, entities.contributor as Contributor
 from model.file import File as File_Model
 from model.book_file import Book_File as Book_File_Model
@@ -30,19 +31,10 @@ class File:
     logger:Logger = None
 
     def __init__(self, full_path:str, config:Config):
-        self.exists_in_db = File_Model.record_exists('full_path',full_path)
-        if not self.exists_in_db or config.force_reprocess:
-            self.logger = Logger()
-            self.logger.log('INFO', f'Processing file {full_path}...')
-            self.book = []
-            self.config = config
-            self.set_full_path(full_path)
-            self.set_file_name()
-            self.set_source_path()
-            self.set_extension()
-            self.set_fingerprint()
-            self.probe_file()
-            self.fetch_metadata()
+        self.logger = Logger()
+        self.config = config
+        self.set_full_path(full_path)
+        self.book = []
 
     def __str__(self):
         return (
@@ -72,6 +64,55 @@ class File:
     def set_fingerprint(self):
         self.fingerprint = self.create_fingerprint()
 
+    def set_media_path(self):
+        try:
+            target_path:str = self.config.target_directory.get('base_directory')
+            tokens = self.get_tokens_by_preference()
+
+            if tokens.get('series', None):
+                target_path += self.config.target_directory.get('in_series_format')
+            else:
+                target_path += self.config.target_directory.get('no_series_format')
+            
+            self.media_path = target_path.format(**tokens)
+        except Exception:
+            self.logger.log('ERROR',f'Error while attempting to set the media path for {self.full_path}. {traceback.format_exc()}')
+
+    def get_tokens_by_preference(self):
+        # result is a book object that is the result of all book objects coalesced into one based on the metadata preference
+        tokens = {}
+        self.sort_books_by_preference()
+
+        # retrieve author
+        author = utils.coalesce('authors', self.book)
+        if author: 
+            author = utils.get_first_item(author) # in case of multiple authors, get the first one
+        if not author: author = Contributor('Unknown') 
+        tokens["author"] = sanitize_filename(author.name)
+
+        # retrieve series
+        series_object = utils.coalesce('series', self.book)
+        if series_object: 
+            series = utils.get_first_item(series_object) # in case of multiple series, get the first one
+            tokens["series"] = sanitize_filename(series.name)
+            tokens["part"] = sanitize_filename(series.part)
+
+        # retrieve title
+        tokens["title"] = sanitize_filename(utils.coalesce('title', self.book))
+
+        self.logger.log('DEBUG',f'Media path tokens for {self.full_path}: {tokens.__str__()}')
+
+        return tokens
+
+    def sort_books_by_preference(self):
+        # result is a reordering of the book objects to align with the preferred metadata sources from the config file
+        
+        # creates a mapping between a book source and the preference
+        order_mapping = {value: index for index, value in enumerate(self.config.get_metadata_preference())} 
+
+        # sorts the existing book objects using the order mapping defined above
+        self.book = sorted(self.book, key=lambda obj: order_mapping.get(obj.source, float('inf')))
+
     def create_fingerprint(self):
         chunk_size = 1024 * 1024 
         algorithm = 'sha256'
@@ -86,6 +127,22 @@ class File:
         except Exception:
             self.logger.log('ERROR',f'Error while generating a fingerprint for {self.full_path}: {traceback.format_exc()}')
     
+    def exists(self):
+        if self.exists_in_db is None:
+            self.exists_in_db = File_Model.record_exists('full_path',self.full_path)
+        return self.exists_in_db
+
+    def process(self):
+        self.logger.log('INFO', f'Processing file {self.full_path}...')
+        self.set_file_name()
+        self.set_source_path()
+        self.set_extension()
+        self.set_fingerprint()
+        self.probe_file()
+        self.fetch_metadata()
+        self.set_media_path()
+        self.create_hardlink()
+
     def save(self):
         # a transaction here helps in two ways. firstly, if something errors out, we don't get a partial commit. 
         # secondly, a transaction prevents any race conditions. committing everything at once allows the db to commit items in the order needed
@@ -144,8 +201,8 @@ class File:
             match source, self.extension:
                 case "goodreads", 'epub' | 'pdf':
                     self.logger.log('INFO', f'Fetching metadata from Goodreads for {self.full_path}...')
-                    goodreads = Goodreads(headless=self.config.headless_mode)
-                    book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].title, author=self.book[0].get_authors(' '))
+                    goodreads = Goodreads(self.config)
+                    book = goodreads.fetch_all(Book(source = 2), isbn=self.book[0].isbn, title=self.book[0].get_sanitized_title(), author=self.book[0].get_authors(' '))
                     if book: 
                         self.is_matched = True
                         self.book.append(book)
@@ -310,111 +367,6 @@ class File:
         self.ffprobeBook=book
 
         return book
-    
-    def hardlink_file(self):
-
-        #check if the target path exists
-        if (not os.path.exists(self.media_path)):
-            #make dir path
-            print (f"\tCreating target directory: {self.media_path} ")
-            os.makedirs(self.media_path, exist_ok=True)
-        
-        #check if the file already exists in the target directory
-        filename=os.path.join(self.media_path, self.file_name)
-        if (not os.path.exists(filename)):
-            try:
-                os.link(self.source_path, filename)
-                self.is_hardlinked = True
-            except Exception as e:
-                print (f"\tHardlink failed due to {e}")
-        else:
-            print (f"\tSkipped : {filename} exists")
-                
-        return self.isHardlinked
-    
-    def getConfigTargetPath(self, cfg, book):
-        #Config
-        in_series = cfg.get("Config/target_path/in_series")
-        no_series = cfg.get("Config/target_path/no_series")
-        disc_folder = cfg.get("Config/target_path/disc_folder")
-
-
-        if (book is not None):
-            #Get primary author
-            if ((book.authors is not None) and (len(book.authors) == 0)):
-                author="Unknown"
-            else:
-                author=book.authors[0].name  
-
-            #standardize author name (replace . with space, and then make sure that there's only single space)
-            author=utils.cleanseAuthor(author)
-
-            #Get primary narrator
-            if ((book.narrators is not None) and (len(book.authors) == 0)):
-                narrators=""
-            else:
-                narrators=book.getNarrators()
-
-            #is this a MultiCd file?
-            disc = self.getParentFolder()
-            if (not utils.isMultiCD(disc)):
-                disc = ""
-
-            #Does this book belong in a series - only take the first series?
-            series=""
-            part=""
-            if (len(book.series) > 0):
-                series = f"{utils.cleanseSeries(book.series[0].name)}"
-                part = str(book.series[0].part)
-
-            title = f"{utils.cleanseTitle(book.title)}"
-
-            tokens = {}
-            tokens["author"] = sanitize_filename(author)
-            tokens["series"] = sanitize_filename(series)
-            tokens["part"] = sanitize_filename(part)
-            tokens["title"] = sanitize_filename(book.title)
-            tokens["cleanTitle"] = sanitize_filename(title)
-            tokens["disc"] = sanitize_filename(disc)
-            tokens["narrators"] = f"{{{sanitize_filename(narrators)}}}"
-
-            sPath = ""
-            if len(book.series):
-                x = in_series.format (**tokens)
-                #use in_series format
-                for p in x.split ("/"):
-                    sPath=os.path.join (sPath, p)
-            else:
-                y = no_series.format (**tokens)
-                #use no_series format
-                for p in y.split ("/"):
-                    sPath=os.path.join (sPath, p)
-
-            #add disc for multidisc
-            if len(disc):
-                z = disc_folder.format (**tokens)
-                sPath=os.path.join(sPath, z)
-
-            return os.path.join(self.media_path, sPath)  
-    
-    def getTargetPaths(self, book, cfg):
-        return self.getConfigTargetPath(cfg, book)
-    
-    def getLogRecord(self, bookMatch:Book, cfg):
-        #returns a dictionary of the record that gets logged
-        book={
-            "file":self.full_path,
-            "isMatched": self.is_matched,
-            "isHardLinked": self.is_hardlinked,
-        }
-
-        book=bookMatch.getDictionary(book)
-
-        if cfg.get("Config/metadata") != "log":
-            book["paths"]=self.getConfigTargetPath(cfg, bookMatch)
-
-        return book
-    
 
     def isCollection (bookFile, source_path):
         #we assume that most books are formatted this way /Book/Files.m4b
@@ -423,23 +375,19 @@ class File:
         relPath = os.path.relpath(bookFile, source_path).split(os.sep)
         return (len(relPath) > 2)
     
-    def createHardLinks(bookFiles, targetFolder="", dryRun=False):
-        #hard link all the books in the list
-        for f in bookFiles:
-            #use Audible metadata or ID3 metadata
-            if f.isMatched:
-                book=f.audibleMatch
-            else:
-                book=f.ffprobeBook
-
-            #if there is a book
-            if (book is not None):
-                #if a book belongs to multiple series, hardlink them to tall series
-                for p in f.getTargetPaths(book):
-                    prefix=""
-                    if (not dryRun):
-                        f.hardlinkFile(f.sourcePath, os.path.join(targetFolder, p))
-                    else:
-                        prefix = "[Dry Run] : "
-                    print (f"{prefix}Hardlinking {f.sourcePath} to {os.path.join(targetFolder,p)}")
-                print("\n", 40 * "-", "\n")
+    def create_hardlink(self):
+        if not os.path.exists(self.media_path):
+            self.logger.log('DEBUG',f'Created target directory: {self.media_path}...')
+            os.makedirs(self.media_path, exist_ok=True)
+        
+        media_path = os.path.join(self.media_path, self.file_name)
+        if (not os.path.exists(media_path)):
+            try:
+                os.link(self.full_path, media_path)
+                self.is_hardlinked = True
+                self.logger.log('INFO',f'Hardlink created for {self.full_path} at {self.media_path}.')
+            except Exception as e:
+                self.logger.log('ERROR', f'Error occurred while attempting to hardlink file {self.full_path}. {traceback.format_exc()}')
+        else:
+            self.logger.log('DEBUG', f'Skipped hardlink for: {self.full_path}. Hardlink already exists at {self.media_path}.')
+        return self.is_hardlinked

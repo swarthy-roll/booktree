@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from bs4 import BeautifulSoup
 from utils.search import Search
 from utils.agent import Agent
+from utils.config import Config
 from entities.series import Series
 from entities.book import Book
 from entities.logger import Logger
@@ -10,6 +11,7 @@ from entities.logger import Logger
 @dataclass
 class Goodreads:
     crawler: Agent
+    config: Config
     page_content: BeautifulSoup
     logger:Logger
     book_url:str
@@ -18,8 +20,11 @@ class Goodreads:
     xpath_show_all: str = "//button[@aria-label='Show all items in the list']"
     xpath_book_details: str = "//button[@aria-label='Book details and editions']"
     
-    def __init__(self, headless:bool):
-        self.crawler = Agent(headless=headless)
+    def __init__(self, config:Config = None):
+        if not config:
+            config = Config()
+        self.config = config
+        self.crawler = Agent(headless=config.headless_mode)
         self.logger = Logger()
 
     def fetch_all(self, book:Book, isbn="", title="", author=""):
@@ -44,6 +49,11 @@ class Goodreads:
                 self.set_page_content(url.book_url)
 
                 if self.page_content:
+                    # store the main content portion of the page for reference and possible re-parsing
+                    main_content = self.page_content.find('div', class_='BookPage__mainContent')
+                    if main_content:
+                        book.raw_source = str(main_content)
+                    
                     # parse for the title/subtitle
                     book.set_title(self.get_title())
 
@@ -250,10 +260,11 @@ class Goodreads:
             # Search for divs within Book Details with the class DescListItem.
             # There are several of these, so use the label of the data section as a filter
             # Iterate over all the divs until one is found that contains the proper label
-            all_divs = book_details.find_all("div", class_='DescListItem')
-            for div in all_divs:
-                if div.find_next("dt").get_text(strip=True) == label:
-                    return div
+            if book_details:
+                all_divs = book_details.find_all("div", class_='DescListItem')
+                for div in all_divs:
+                    if div.find_next("dt").get_text(strip=True) == label:
+                        return div
 
         except Exception:
             self.logger.log('ERROR', f'Could not find {label} on the page {self.book_url}: {traceback.format_exc()}')
@@ -261,21 +272,24 @@ class Goodreads:
     def get_publisher(self):
         self.logger.log('DEBUG', f'Scraping publisher on {self.book_url}...')
         try:
-            div = self.get_div_by_dt("Published").find("div", {"data-testid": "contentContainer"})
-            if div and "by" in div.next_element:
-                return div.next_element.split("by")[-1].strip()
-            else:
-                return ""
+            div = self.get_div_by_dt("Published")
+            if div:
+                div = div.find("div", {"data-testid": "contentContainer"})
+                if div and "by" in div.next_element:
+                    return div.next_element.split("by")[-1].strip()
+            return ""
         except Exception:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the book publisher on {self.book_url}: {traceback.format_exc()}')  
 
     def get_isbn(self):
         self.logger.log('DEBUG', f'Scraping ISBN on {self.book_url}...')
         try:
-            div = self.get_div_by_dt("ISBN").find("div", {"data-testid": "contentContainer"})
-            if div:
-                isbn = div.next_element.strip(' ')
-                return isbn
-            else: return ""
+            div = self.get_div_by_dt("ISBN")
+            if div: 
+                div = div.find("div", {"data-testid": "contentContainer"})
+                if div:
+                    isbn = div.next_element.strip(' ')
+                    return isbn
+            return ""
         except Exception:
             self.logger.log('ERROR', f'An unexpected error occurred while getting the ISBN on {self.book_url}: {traceback.format_exc()}') 

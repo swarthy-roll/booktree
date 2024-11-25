@@ -55,6 +55,21 @@ def optimizeKeys(cfg, keywords, delim=" "):
     #now return comma delimited string
     return delim.join(kw)
 
+def get_first_item(attribute):
+    # returns the first item in a list if the variable is a list. else returns the original value
+    if attribute:
+        if type(attribute) == list:
+            return attribute[0]
+        return attribute
+
+def coalesce(attribute, objects):
+    # coalesces objects until a non-empty attribute is found
+    for object in objects:
+        value = getattr(object, attribute, None)
+        if value:
+            return value
+    return None
+
 def strip_accents(s):
     return ''.join(c for c in unicodedata.normalize('NFD', s)
                     if unicodedata.category(c) != 'Mn')
